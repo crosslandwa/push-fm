@@ -34,14 +34,14 @@ function intialiseSynth () {
   return (carrierF, carrierA, onComplete) => {
     cancelCurrent()
     const initialTime = now()
-    carrierFrequency.gain.linearRampToValueAtTime(carrierF, 0)
+    carrierFrequency.param.linearRampToValueAtTime(carrierF, 0)
 
-    carrierAmplitude.gain.cancelAndHoldAtTime(0)
+    carrierAmplitude.param.cancelAndHoldAtTime(0)
     const attackTime = (20 / 1000)
     const decayTime = 0.5
     const totalEnvelopeTime = initialTime + attackTime + decayTime
-    carrierAmplitude.gain.linearRampToValueAtTime(carrierA, initialTime + attackTime)
-    carrierAmplitude.gain.linearRampToValueAtTime(0, totalEnvelopeTime)
+    carrierAmplitude.param.linearRampToValueAtTime(carrierA, initialTime + attackTime)
+    carrierAmplitude.param.linearRampToValueAtTime(0, totalEnvelopeTime)
     cancelCurrent = scheduleAt(onComplete, totalEnvelopeTime)
   }
 }
@@ -54,7 +54,7 @@ const operatorFactory = audioContext => {
     osc.frequency.setValueAtTime(0, 0)
     frequencyModulators.forEach(modulator => modulator.connect(osc.frequency))
     osc.start()
-    return osc
+    return { connect: destination => osc.connect(destination) }
   }
 
   function audioParam (initialValue = 0) {
@@ -63,15 +63,18 @@ const operatorFactory = audioContext => {
     source.start()
     node.gain.setValueAtTime(initialValue, 0)
     source.connect(node)
-    return node
+    return {
+      connect: destination => node.connect(destination),
+      param: node.gain
+    }
   }
 
-  function multiply (a, b) {
+  function multiply ({ connect: connectA }, { connect: connectB }) {
     const node = audioContext.createGain()
     node.gain.setValueAtTime(0, 0)
-    a.connect(node)
-    b.connect(node.gain)
-    return node
+    connectA(node)
+    connectB(node.gain)
+    return { connect: destination => node.connect(destination) }
   }
 
   /**
@@ -82,7 +85,7 @@ const operatorFactory = audioContext => {
   }
 
   /**
-   * @param {function} callback schedule a callback to be called
+   * @param {function} callback the scheduled callback
    * @param {number} when the absolute time (in seconds) when the callback will be called
    * @returns {function} a function that when called will cancel the scheduled callback
    */

@@ -19,7 +19,7 @@ export const middleware = ({ dispatch, getState }) => next => async (action) => 
 
 function intialiseSynth () {
   const context = (window.AudioContext || window.webkitAudioContext) && new (window.AudioContext || window.webkitAudioContext)()
-  if (!context) return () => {}
+  if (!context) return (carrierF, carrierA, onComplete) => { onComplete() }
   const { audioParam, multiply, now, oscillator, scheduleAt } = operatorFactory(context)
 
   const carrierAmplitude = audioParam(0)
@@ -34,14 +34,14 @@ function intialiseSynth () {
   return (carrierF, carrierA, onComplete) => {
     cancelCurrent()
     const initialTime = now()
-    carrierFrequency.param.linearRampToValueAtTime(carrierF, 0)
+    carrierFrequency.rampToValueAtTime(carrierF, 0)
 
-    carrierAmplitude.param.cancelAndHoldAtTime(0)
+    carrierAmplitude.holdAtCurrentValue()
     const attackTime = (20 / 1000)
     const decayTime = 0.5
     const totalEnvelopeTime = initialTime + attackTime + decayTime
-    carrierAmplitude.param.linearRampToValueAtTime(carrierA, initialTime + attackTime)
-    carrierAmplitude.param.linearRampToValueAtTime(0, totalEnvelopeTime)
+    carrierAmplitude.rampToValueAtTime(carrierA, initialTime + attackTime)
+    carrierAmplitude.rampToValueAtTime(0, totalEnvelopeTime)
     cancelCurrent = scheduleAt(onComplete, totalEnvelopeTime)
   }
 }
@@ -54,7 +54,9 @@ const operatorFactory = audioContext => {
     osc.frequency.setValueAtTime(0, 0)
     frequencyModulators.forEach(modulator => modulator.connect(osc.frequency))
     osc.start()
-    return { connect: destination => osc.connect(destination) }
+    return {
+      connect: destination => osc.connect(destination)
+    }
   }
 
   function audioParam (initialValue = 0) {
@@ -65,7 +67,8 @@ const operatorFactory = audioContext => {
     source.connect(node)
     return {
       connect: destination => node.connect(destination),
-      param: node.gain
+      holdAtCurrentValue: () => node.gain.cancelAndHoldAtTime(0),
+      rampToValueAtTime: (value, time) => node.gain.linearRampToValueAtTime(value, time)
     }
   }
 
@@ -74,7 +77,9 @@ const operatorFactory = audioContext => {
     node.gain.setValueAtTime(0, 0)
     connectA(node)
     connectB(node.gain)
-    return { connect: destination => node.connect(destination) }
+    return {
+      connect: destination => node.connect(destination)
+    }
   }
 
   /**

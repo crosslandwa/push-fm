@@ -24,7 +24,16 @@ function intialiseSynth () {
 
   const carrierAmplitude = audioParam(0)
   const carrierFrequency = audioParam(0)
-  const carrierOsc = oscillator([carrierFrequency])
+  const harmonicityRatio = audioParam(0.99)
+  const modulationIndex = audioParam(3.99)
+
+  const carrierFrequencyTimesHarmonicityRatio = multiply(carrierFrequency, harmonicityRatio)
+  const modulatorOsc = multiply(
+    oscillator([carrierFrequencyTimesHarmonicityRatio]),
+    multiply(carrierFrequencyTimesHarmonicityRatio, modulationIndex)
+  )
+
+  const carrierOsc = oscillator([carrierFrequency, modulatorOsc])
   const output = multiply(carrierOsc, carrierAmplitude)
 
   output.connect(context.destination)
@@ -34,7 +43,7 @@ function intialiseSynth () {
   return (carrierF, carrierA, onComplete) => {
     cancelCurrent()
     const initialTime = now()
-    carrierFrequency.rampToValueAtTime(carrierF, 0)
+    carrierFrequency.rampToValueAtTime(carrierF, initialTime)
 
     carrierAmplitude.holdAtCurrentValue()
     const attackTime = (20 / 1000)
@@ -52,7 +61,7 @@ const operatorFactory = audioContext => {
   function oscillator (frequencyModulators = []) {
     const osc = audioContext.createOscillator()
     osc.frequency.setValueAtTime(0, 0)
-    frequencyModulators.forEach(modulator => modulator.connect(osc.frequency))
+    frequencyModulators.forEach(({ connect: connectModulatorTo }) => connectModulatorTo(osc.frequency))
     osc.start()
     return {
       connect: destination => osc.connect(destination)

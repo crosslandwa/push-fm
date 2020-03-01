@@ -1,7 +1,13 @@
-export const ACTION__FM_SYNTH_NOTE_ON = 'FM_SYNTH_NOTE_ON'
-export const ACTION__FM_SYNTH_NOTE_OFF = 'FM_SYNTH_NOTE_OFF'
-export const noteOn = (noteNumber) => ({ type: ACTION__FM_SYNTH_NOTE_ON, noteNumber })
-export const noteOff = (noteNumber) => ({ type: ACTION__FM_SYNTH_NOTE_OFF, noteNumber })
+export const ACTION__FM_SYNTH_NOTE_ON = {
+  type: 'FM_SYNTH_NOTE_ON',
+  noteNumber: action => action.noteNumber
+}
+export const ACTION__FM_SYNTH_NOTE_OFF = {
+  type: 'FM_SYNTH_NOTE_OFF',
+  noteNumber: action => action.noteNumber
+}
+export const noteOn = (noteNumber) => ({ type: ACTION__FM_SYNTH_NOTE_ON.type, noteNumber })
+export const noteOff = (noteNumber) => ({ type: ACTION__FM_SYNTH_NOTE_OFF.type, noteNumber })
 export const playNote = (noteNumber, velocity) => ({ type: 'FM_SYNTH_PLAY_NOTE', noteNumber, velocity })
 
 let synth
@@ -12,8 +18,8 @@ export const middleware = ({ dispatch, getState }) => next => async (action) => 
       if (!synth) {
         synth = intialiseSynth()
       }
-      next(noteOn(action.noteNumber))
       synth(midiNoteToF(action.noteNumber), action.velocity / 127, () => next(noteOff(action.noteNumber)))
+      next(noteOn(action.noteNumber))
       return
   }
   return next(action)
@@ -53,7 +59,8 @@ function intialiseSynth () {
     const totalEnvelopeTime = initialTime + attackTime + decayTime
     carrierAmplitude.rampToValueAtTime(carrierA, initialTime + attackTime)
     carrierAmplitude.rampToValueAtTime(0, totalEnvelopeTime)
-    cancelCurrent = scheduleAt(onComplete, totalEnvelopeTime)
+    scheduleAt(onComplete, totalEnvelopeTime)
+    cancelCurrent = () => { onComplete() }
   }
 }
 

@@ -4,9 +4,9 @@ export const isPlaying = state => state.ui.playing
 
 export const reducer = (state = { playing: false }, action) => {
   switch (action.type) {
-    case ACTION__FM_SYNTH_NOTE_ON:
+    case ACTION__FM_SYNTH_NOTE_ON.type:
       return { ...state, playing: true }
-    case ACTION__FM_SYNTH_NOTE_OFF:
+    case ACTION__FM_SYNTH_NOTE_OFF.type:
       return { ...state, playing: false }
   }
   return state

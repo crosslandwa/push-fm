@@ -49,11 +49,11 @@ export const middleware = ({ dispatch }) => next => async action => {
       next(action)
       const { x, y, velocity } = action
       return dispatch(playNote(36 + xyToNumber(x, y), velocity))
-    case ACTION__FM_SYNTH_NOTE_ON:
-      turnOnPad(action.noteNumber - 36)
+    case ACTION__FM_SYNTH_NOTE_ON.type:
+      turnOnPad(ACTION__FM_SYNTH_NOTE_ON.noteNumber(action) - 36)
       return next(action)
-    case ACTION__FM_SYNTH_NOTE_OFF:
-      turnOffPad(action.noteNumber - 36)
+    case ACTION__FM_SYNTH_NOTE_OFF.type:
+      turnOffPad(ACTION__FM_SYNTH_NOTE_OFF.noteNumber(action) - 36)
       return next(action)
   }
   return next(action)

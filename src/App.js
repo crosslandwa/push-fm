@@ -1,11 +1,11 @@
 import React from 'react'
 import { connect } from 'react-redux'
 import './app.css'
-import { playingNotes } from './ui'
+import { activePads } from './ui'
 import { gridPadPressed } from './push'
 
 const mapStateToProps = state => ({
-  activePads: playingNotes(state).reduce((acc, it) => ({ ...acc, [it]: [220, 230, 20] }), {})
+  activePads: activePads(state)
 })
 
 const range = (start, end) => [...Array(end - start).keys()].map(x => x + start)

@@ -2,7 +2,7 @@ import pushWrapper from 'push-wrapper'
 import { ACTION__FM_SYNTH_NOTE_OFF, ACTION__FM_SYNTH_NOTE_ON, playNote } from '../fm-synth'
 
 export const initialisePush = () => ({ type: 'PUSH_INITIALISE' })
-const gridPadPressed = (x, y, velocity) => ({ type: 'PUSH_PAD_PRESSED', x, y, velocity })
+export const gridPadPressed = (x, y, velocity) => ({ type: 'PUSH_PAD_PRESSED', x, y, velocity })
 
 const xyToNumber = (x, y) => (x % 8) + (y * 8)
 const numberToXY = n => {

@@ -8,7 +8,9 @@ const mapStateToProps = state => ({
   activePads: activePads(state)
 })
 
-const range = (start, end) => [...Array(end - start).keys()].map(x => x + start)
+const range = (start, end) => end > start
+  ? [...Array((end + 1) - start).keys()].map(x => x + start)
+  : [...Array((start + 1) - end).keys()].map(x => x + end).reverse()
 
 const GridButton = ({ onClick, rgb = [255, 255, 255], x, y }) => (
   <button
@@ -29,12 +31,12 @@ const App = ({ activePads, gridPadPressed }) => (
     <h1>Push FM</h1>
     <div class="push-body">
       <div class="push-grid-select">
-        {range(0, 8).map(x => <GridSelectButton x={x} />)}
+        {range(0, 7).map(x => <GridSelectButton x={x} />)}
       </div>
       <div class="push-grid">
-        {range(0, 64).map(i => (
-          <GridButton x={i % 8} y={parseInt(i / 8)} onClick={gridPadPressed} rgb={activePads[i]} />
-        ))}
+        {range(7, 0).map(y => range(0, 7).map(x => (
+          <GridButton x={x} y={y} onClick={gridPadPressed} rgb={activePads[x + (y * 8)]} />
+        )))}
       </div>
     </div>
   </>

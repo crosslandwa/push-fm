@@ -2,6 +2,7 @@ import React from 'react'
 import { connect } from 'react-redux'
 import './app.css'
 import { activePads } from './ui'
+import FmSynth from './fm-synth/FmSynth'
 import { gridPadPressed } from './push'
 
 const mapStateToProps = state => ({
@@ -26,9 +27,10 @@ const GridSelectButton = ({ x }) => (
   <button class={`push-grid-select__button push-grid-select__button--x-${x}`} />
 )
 
-const App = ({ activePads, gridPadPressed }) => (
+const App = ({ activePads, gridPadPressed, modLevel, updateModLevel }) => (
   <>
     <h1>Push FM</h1>
+    <FmSynth />
     <div class="push-body">
       <div class="push-grid-select">
         {range(0, 7).map(x => <GridSelectButton x={x} />)}

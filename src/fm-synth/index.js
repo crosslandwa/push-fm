@@ -1,3 +1,4 @@
+// ---------- ACTIONS ----------
 export const ACTION__FM_SYNTH_NOTE_ON = {
   type: 'FM_SYNTH_NOTE_ON',
   noteNumber: action => action.noteNumber
@@ -6,10 +7,27 @@ export const ACTION__FM_SYNTH_NOTE_OFF = {
   type: 'FM_SYNTH_NOTE_OFF',
   noteNumber: action => action.noteNumber
 }
+
 export const noteOn = (noteNumber) => ({ type: ACTION__FM_SYNTH_NOTE_ON.type, noteNumber })
 export const noteOff = (noteNumber) => ({ type: ACTION__FM_SYNTH_NOTE_OFF.type, noteNumber })
 export const playNote = (noteNumber, velocity) => ({ type: 'FM_SYNTH_PLAY_NOTE', noteNumber, velocity })
+export const updateModLevel = level => ({ type: 'FM_SYNTH_MOD_LEVEL', level: parseFloat(level) })
 
+// ---------- SELECTOR ----------
+export const modLevel = state => state.fmSynth.modLevel
+
+// ---------- REDUCER ----------
+const initialState = { modLevel: 0 }
+
+export const reducer = (state = initialState, action) => {
+  switch (action.type) {
+    case 'FM_SYNTH_MOD_LEVEL':
+      return { ...state, modLevel: action.level }
+  }
+  return state
+}
+
+// ---------- MIDDLEWARE ----------
 let synth
 
 export const middleware = ({ dispatch, getState }) => next => async (action) => {
@@ -18,22 +36,28 @@ export const middleware = ({ dispatch, getState }) => next => async (action) => 
       if (!synth) {
         synth = intialiseSynth()
       }
-      synth(midiNoteToF(action.noteNumber), action.velocity / 127, () => next(noteOff(action.noteNumber)))
+      synth(
+        () => next(noteOff(action.noteNumber)),
+        midiNoteToF(action.noteNumber),
+        action.velocity / 127,
+        modLevel(getState()) * 500
+      )
       next(noteOn(action.noteNumber))
       return
   }
   return next(action)
 }
 
+// ---------- FM SYNTH ----------
 function intialiseSynth () {
   const context = (window.AudioContext || window.webkitAudioContext) && new (window.AudioContext || window.webkitAudioContext)()
-  if (!context) return (carrierF, carrierA, onComplete) => { onComplete() }
+  if (!context) return (onComplete) => { onComplete() }
   const { audioParam, multiply, now, oscillator, scheduleAt } = operatorFactory(context)
 
   const carrierAmplitude = audioParam(0)
   const carrierFrequency = audioParam(0)
   const harmonicityRatio = audioParam(0.99)
-  const modulationIndex = audioParam(3.99)
+  const modulationIndex = audioParam(0)
 
   const carrierFrequencyTimesHarmonicityRatio = multiply(carrierFrequency, harmonicityRatio)
   const modulatorOsc = multiply(
@@ -48,10 +72,11 @@ function intialiseSynth () {
 
   let cancelCurrent = () => {}
 
-  return (carrierF, carrierA, onComplete) => {
+  return (onComplete, carrierF, carrierA, modLevel) => {
     cancelCurrent()
     const initialTime = now()
     carrierFrequency.rampToValueAtTime(carrierF, initialTime)
+    modulationIndex.rampToValueAtTime(modLevel, initialTime)
 
     carrierAmplitude.holdAtCurrentValue()
     const attackTime = (20 / 1000)

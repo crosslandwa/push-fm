@@ -2,12 +2,12 @@
   margin: auto;
   font-family: sans-serif;
   width: 100%;
+  max-width: 52.5rem;
 }
 
 .push-body {
   margin: auto;
   background: grey;
-  max-width: 52.5rem;
 }
 
 .push-grid, .push-grid-select {
@@ -17,20 +17,14 @@
 }
 
 .push-grid-select:before {
-    content:     "";
-    display:     block;
-    padding-top: 6.25%;
+  content: "";
+  display: block;
+  padding-top: 6.25%;
 }
 
 .push-grid:before {
-    content:     "";
-    display:     block;
-    padding-top: 80%;
-}
-
-.push-grid:before {
-  content:     "";
-  display:     block;
+  content: "";
+  display: block;
   padding-top: 80%;
 }
 

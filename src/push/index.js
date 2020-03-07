@@ -3,7 +3,18 @@ import { ACTION__FM_SYNTH_NOTE_OFF, ACTION__FM_SYNTH_NOTE_ON, playNote } from '.
 
 export const initialisePush = () => ({ type: 'PUSH_INITIALISE' })
 export const gridPadPressed = (x, y, velocity) => ({ type: 'PUSH_PAD_PRESSED', x, y, velocity })
+const pushBindingError = error => ({ type: 'PUSH_BINDING_ERROR', error })
 
+// ---------- REDUCER ----------
+export const reducer = (state = { errors: [] }, action) => {
+  switch (action.type) {
+    case 'PUSH_BINDING_ERROR':
+      return { ...state, errors: [action.error] }
+  }
+  return state
+}
+
+// ---------- MIDDLEWARE ----------
 const xyToNumber = (x, y) => (x % 8) + (y * 8)
 const numberToXY = n => {
   const y = parseInt(n / 8)
@@ -34,7 +45,7 @@ export const middleware = ({ dispatch }) => next => async action => {
             push.onMidiToHardware(outputPort.send.bind(outputPort))
             return push
           },
-          err => { console.error(err); return pushWrapper.push() } // Ports not found or Web MIDI API not supported
+          err => { next(pushBindingError(err.message)); return pushWrapper.push() } // Ports not found or Web MIDI API not supported
         )
         .then(push => {
           [0, 1, 2, 3, 4, 5, 6, 7].forEach(y => {

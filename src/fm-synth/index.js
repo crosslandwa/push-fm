@@ -12,25 +12,26 @@ export const loadPatch = patch => ({ type: 'FM_SYNTH_LOAD_PATCH', patch })
 export const noteOn = (noteNumber) => ({ type: ACTION__FM_SYNTH_NOTE_ON.type, noteNumber })
 export const noteOff = (noteNumber) => ({ type: ACTION__FM_SYNTH_NOTE_OFF.type, noteNumber })
 export const playNote = (noteNumber, velocity) => ({ type: 'FM_SYNTH_PLAY_NOTE', noteNumber, velocity })
-export const updateEnv1Release = level => ({ type: 'FM_SYNTH_ENV_1_RELEASE', level: parseFloat(level) })
-export const updateModLevel = level => ({ type: 'FM_SYNTH_MOD_LEVEL', level: parseFloat(level) })
+export const updateEnv1Attack = level => updateParam('env1Attack', level)
+export const updateEnv1Release = level => updateParam('env1Release', level)
+export const updateModLevel = level => updateParam('modLevel', level)
+const updateParam = (param, level) => ({ type: 'FM_SYNTH_UPDATE_PARAM', param, level: parseFloat(level) })
 
 // ---------- SELECTOR ----------
 export const currentPatch = state => state.fmSynth
+export const env1Attack = state => currentPatch(state).env1Attack
 export const env1Release = state => currentPatch(state).env1Release
 export const modLevel = state => currentPatch(state).modLevel
 
 // ---------- REDUCER ----------
-const initialState = { modLevel: 0, env1Release: 0.0625 }
+const initialState = { modLevel: 0, env1Attack: 0.0025, env1Release: 0.0625 }
 
 export const reducer = (state = initialState, action) => {
   switch (action.type) {
-    case 'FM_SYNTH_ENV_1_RELEASE':
-      return { ...state, env1Release: action.level }
-    case 'FM_SYNTH_MOD_LEVEL':
-      return { ...state, modLevel: action.level }
     case 'FM_SYNTH_LOAD_PATCH':
       return action.patch || initialState
+    case 'FM_SYNTH_UPDATE_PARAM':
+      return { ...state, [action.param]: action.level }
   }
   return state
 }
@@ -45,7 +46,7 @@ export const middleware = ({ dispatch, getState }) => next => async (action) => 
         synth = intialiseSynth()
       }
       const carrierAEnvelope = {
-        attackTime: 0.02, // 20ms default
+        attackTime: Math.max(0.005, env1Attack(getState()) * 8), // 5ms min
         level: action.velocity / 127,
         releaseTime: Math.max(0.005, env1Release(getState()) * 8) // 5ms min
       }

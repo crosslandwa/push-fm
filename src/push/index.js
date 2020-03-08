@@ -1,8 +1,10 @@
 import pushWrapper from 'push-wrapper'
 import { ACTION__FM_SYNTH_NOTE_OFF, ACTION__FM_SYNTH_NOTE_ON, playNote } from '../fm-synth'
+import { currentPatch, loadPatch, savePatch } from '../patch-management'
 
 export const initialisePush = () => ({ type: 'PUSH_INITIALISE' })
 export const gridPadPressed = (x, y, velocity) => ({ type: 'PUSH_PAD_PRESSED', x, y, velocity })
+export const gridSelectPressed = (x) => ({ type: 'PUSH_GRID_SELECT_PRESSED', x })
 const pushBindingError = error => ({ type: 'PUSH_BINDING_ERROR', error })
 
 // ---------- REDUCER ----------
@@ -33,7 +35,7 @@ const turnOffPad = n => {
   push.gridCol(x)[y].ledOff()
 }
 
-export const middleware = ({ dispatch }) => next => async action => {
+export const middleware = ({ dispatch, getState }) => next => async action => {
   switch (action.type) {
     case 'PUSH_INITIALISE':
       // TODO potentially need to have user select input/output MIDI ports and re-initialise push wrapper
@@ -60,6 +62,13 @@ export const middleware = ({ dispatch }) => next => async action => {
       next(action)
       const { x, y, velocity } = action
       return dispatch(playNote(36 + xyToNumber(x, y), velocity))
+    case 'PUSH_GRID_SELECT_PRESSED':
+      next(action)
+      const currentPatchNumber = currentPatch(getState())
+      const invokedPatchNumber = action.x + 1
+      return currentPatchNumber === invokedPatchNumber
+        ? dispatch(savePatch(invokedPatchNumber))
+        : dispatch(loadPatch(invokedPatchNumber))
     case ACTION__FM_SYNTH_NOTE_ON.type:
       turnOnPad(ACTION__FM_SYNTH_NOTE_ON.noteNumber(action) - 36)
       return next(action)

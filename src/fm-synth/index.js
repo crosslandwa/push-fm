@@ -44,7 +44,7 @@ export const middleware = ({ dispatch, getState }) => next => async (action) => 
         () => next(noteOff(action.noteNumber)),
         midiNoteToF(action.noteNumber),
         action.velocity / 127,
-        modLevel(getState()) * 500
+        Math.pow(modLevel(getState()), 3) * 500
       )
       next(noteOn(action.noteNumber))
       return

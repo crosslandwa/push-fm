@@ -29,7 +29,7 @@ const initialState = { modLevel: 0, env1Attack: 0.0025, env1Release: 0.0625 }
 export const reducer = (state = initialState, action) => {
   switch (action.type) {
     case 'FM_SYNTH_LOAD_PATCH':
-      return action.patch || initialState
+      return { ...initialState, ...(action.patch || {}) }
     case 'FM_SYNTH_UPDATE_PARAM':
       return { ...state, [action.param]: action.level }
   }

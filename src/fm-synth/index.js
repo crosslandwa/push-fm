@@ -8,8 +8,7 @@ export const ACTION__FM_SYNTH_NOTE_OFF = {
   noteNumber: action => action.noteNumber
 }
 
-export const loadPatch = patchNumber => ({ type: 'PATCH_MANAGEMENT_LOAD_PATCH', patchNumber })
-export const loadSynthPatch = patch => ({ type: 'FM_SYNTH_LOAD_PATCH', patch })
+export const loadPatch = patchNumber => ({ type: 'FM_SYNTH_LOAD_PATCH', patchNumber })
 export const noteOn = (noteNumber) => ({ type: ACTION__FM_SYNTH_NOTE_ON.type, noteNumber })
 export const noteOff = (noteNumber) => ({ type: ACTION__FM_SYNTH_NOTE_OFF.type, noteNumber })
 export const playNote = (noteNumber, velocity) => ({ type: 'FM_SYNTH_PLAY_NOTE', noteNumber, velocity })
@@ -31,7 +30,7 @@ const patch = (state, number) => state.patchManagement.patches[number]
 
 export const patchManagementReducer = (state = { currentPatch: 1, patches: {} }, action) => {
   switch (action.type) {
-    case 'PATCH_MANAGEMENT_LOAD_PATCH':
+    case 'FM_SYNTH_LOAD_PATCH':
       return { ...state, currentPatch: action.patchNumber }
     case 'PATCH_MANAGEMENT_SAVE_PATCH':
       return {
@@ -81,14 +80,12 @@ export const middleware = ({ dispatch, getState }) => next => async (action) => 
       )
       next(noteOn(action.noteNumber))
       return
-    case 'PATCH_MANAGEMENT_LOAD_PATCH':
-      next(action)
-      next(loadSynthPatch(patch(getState(), action.patchNumber)))
-      return
+    case 'FM_SYNTH_LOAD_PATCH':
+      action.patch = patch(getState(), action.patchNumber)
+      return next(action)
     case 'PATCH_MANAGEMENT_SAVE_PATCH':
       action.patch = currentSynthPatch(getState())
-      next(action)
-      return
+      return next(action)
   }
   return next(action)
 }

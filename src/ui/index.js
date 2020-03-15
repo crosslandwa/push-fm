@@ -1,9 +1,9 @@
-import { ACTION__FM_SYNTH_NOTE_OFF, ACTION__FM_SYNTH_NOTE_ON, currentPatch } from '../fm-synth'
+import { ACTION__FM_SYNTH_NOTE_OFF, ACTION__FM_SYNTH_NOTE_ON, currentPatchNumber } from '../fm-synth'
 
 const YELLOW = [220, 230, 20]
 
 // ---------- SELECTOR ----------
-export const activeGridSelect = state => ({ [currentPatch(state) - 1]: YELLOW })
+export const activeGridSelect = state => ({ [currentPatchNumber(state) - 1]: YELLOW })
 export const activePads = state => state.ui.playingNotes
   .map(x => x - 36)
   .reduce(

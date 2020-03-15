@@ -19,23 +19,23 @@ export const updateModLevel = level => updateParam('modLevel', level)
 const updateParam = (param, level) => ({ type: 'FM_SYNTH_UPDATE_PARAM', param, level: parseFloat(level) })
 
 // ---------- SELECTOR ----------
-const currentSynthPatch = state => state.fmSynth
-export const env1Attack = state => currentSynthPatch(state).env1Attack
-export const env1Release = state => currentSynthPatch(state).env1Release
-export const modLevel = state => currentSynthPatch(state).modLevel
+const currentPatch = state => state.fmSynth
+export const currentPatchNumber = (state) => patchManagement(state).currentPatchNumber
+export const env1Attack = state => currentPatch(state).env1Attack
+export const env1Release = state => currentPatch(state).env1Release
+export const modLevel = state => currentPatch(state).modLevel
+const patchManagement = state => state.patchManagement
+const savedPatch = (state, number) => patchManagement(state).patches[number]
 
 // ---------- PATCH MANAGEMENT REDUCER ----------
-export const currentPatch = (state) => state.patchManagement.currentPatch
-const patch = (state, number) => state.patchManagement.patches[number]
-
-export const patchManagementReducer = (state = { currentPatch: 1, patches: {} }, action) => {
+export const patchManagementReducer = (state = { currentPatchNumber: 1, patches: {} }, action) => {
   switch (action.type) {
     case 'FM_SYNTH_LOAD_PATCH':
-      return { ...state, currentPatch: action.patchNumber }
+      return { ...state, currentPatchNumber: action.patchNumber }
     case 'FM_SYNTH_SAVE_PATCH':
       return {
         ...state,
-        currentPatch: action.patchNumber,
+        currentPatchNumber: action.patchNumber,
         patches: {
           ...state.patches,
           [action.patchNumber]: action.patch
@@ -81,10 +81,10 @@ export const middleware = ({ dispatch, getState }) => next => async (action) => 
       next(noteOn(action.noteNumber))
       return
     case 'FM_SYNTH_LOAD_PATCH':
-      action.patch = patch(getState(), action.patchNumber)
+      action.patch = savedPatch(getState(), action.patchNumber)
       return next(action)
     case 'FM_SYNTH_SAVE_PATCH':
-      action.patch = currentSynthPatch(getState())
+      action.patch = currentPatch(getState())
       return next(action)
   }
   return next(action)

@@ -1,16 +1,7 @@
 // ---------- ACTIONS ----------
-export const ACTION__FM_SYNTH_NOTE_ON = {
-  type: 'FM_SYNTH_NOTE_ON',
-  noteNumber: action => action.noteNumber
-}
-export const ACTION__FM_SYNTH_NOTE_OFF = {
-  type: 'FM_SYNTH_NOTE_OFF',
-  noteNumber: action => action.noteNumber
-}
-
 export const loadPatch = patchNumber => ({ type: 'FM_SYNTH_LOAD_PATCH', patchNumber })
-const noteOn = (noteNumber) => ({ type: ACTION__FM_SYNTH_NOTE_ON.type, noteNumber })
-const noteOff = (noteNumber) => ({ type: ACTION__FM_SYNTH_NOTE_OFF.type, noteNumber })
+const noteOn = (noteNumber, velocity) => ({ type: 'FM_SYNTH_NOTE_ON', noteNumber, velocity })
+const noteOff = (noteNumber) => ({ type: 'FM_SYNTH_NOTE_OFF', noteNumber })
 export const playNote = (noteNumber, velocity) => ({ type: 'FM_SYNTH_PLAY_NOTE', noteNumber, velocity })
 export const savePatch = patchNumber => ({ type: 'FM_SYNTH_SAVE_PATCH', patchNumber })
 export const updateEnv1Attack = level => updateParam('env1Attack', level)
@@ -19,7 +10,8 @@ export const updateModLevel = level => updateParam('modLevel', level)
 const updateParam = (param, level) => ({ type: 'FM_SYNTH_UPDATE_PARAM', param, level: parseFloat(level) })
 
 // ---------- SELECTOR ----------
-const currentPatch = state => state.fmSynth
+export const activeNotes = state => state.fmSynth.activeNotes
+const currentPatch = state => state.fmSynth.patch
 export const currentPatchNumber = (state) => patchManagement(state).currentPatchNumber
 export const env1Attack = state => currentPatch(state).env1Attack
 export const env1Release = state => currentPatch(state).env1Release
@@ -46,14 +38,33 @@ export const patchManagementReducer = (state = { currentPatchNumber: 1, patches:
 }
 
 // ---------- REDUCER ----------
-const initialState = { modLevel: 0, env1Attack: 0.0025, env1Release: 0.0625 }
+const initialState = {
+  activeNotes: [],
+  patch: { modLevel: 0, env1Attack: 0.0025, env1Release: 0.0625 }
+}
 
 export const reducer = (state = initialState, action) => {
   switch (action.type) {
     case 'FM_SYNTH_LOAD_PATCH':
-      return { ...initialState, ...(action.patch || {}) }
+      return {
+        ...state,
+        patch: { ...initialState.patch, ...(action.patch || {}) }
+      }
+    case 'FM_SYNTH_NOTE_OFF':
+      return {
+        ...state,
+        activeNotes: state.activeNotes.filter(x => x.noteNumber !== action.noteNumber)
+      }
+    case 'FM_SYNTH_NOTE_ON':
+      return {
+        ...state,
+        activeNotes: state.activeNotes.concat({ noteNumber: action.noteNumber, velocity: action.velocity })
+      }
     case 'FM_SYNTH_UPDATE_PARAM':
-      return { ...state, [action.param]: action.level }
+      return {
+        ...state,
+        patch: { ...state.patch, [action.param]: action.level }
+      }
   }
   return state
 }
@@ -72,13 +83,13 @@ export const middleware = ({ dispatch, getState }) => next => async (action) => 
         level: action.velocity / 127,
         releaseTime: Math.max(0.005, env1Release(getState()) * 8) // 5ms min
       }
+      next(noteOn(action.noteNumber, action.velocity))
       synth(
         () => next(noteOff(action.noteNumber)),
-        midiNoteToF(action.noteNumber),
         carrierAEnvelope,
+        midiNoteToF(action.noteNumber),
         Math.pow(modLevel(getState()), 3) * 500
       )
-      next(noteOn(action.noteNumber))
       return
     case 'FM_SYNTH_LOAD_PATCH':
       action.patch = savedPatch(getState(), action.patchNumber)
@@ -93,7 +104,13 @@ export const middleware = ({ dispatch, getState }) => next => async (action) => 
 // ---------- FM SYNTH ----------
 function intialiseSynth () {
   const context = (window.AudioContext || window.webkitAudioContext) && new (window.AudioContext || window.webkitAudioContext)()
-  if (!context) return (onComplete) => { onComplete() }
+  if (!context) {
+    return (onComplete, carrierAEnvelope) => {
+      const { attackTime, releaseTime } = carrierAEnvelope
+      const envelopeTime = attackTime + releaseTime
+      setTimeout(onComplete, envelopeTime * 1000)
+    }
+  }
   const { audioParam, multiply, now, oscillator, scheduleAt } = operatorFactory(context)
 
   const carrierAmplitude = audioParam(0)
@@ -112,10 +129,7 @@ function intialiseSynth () {
 
   output.connect(context.destination)
 
-  let cancelCurrent = () => {}
-
-  return (onComplete, carrierF, carrierAEnvelope, modLevel) => {
-    cancelCurrent()
+  return (onComplete, carrierAEnvelope, carrierF, modLevel) => {
     const initialTime = now()
     carrierFrequency.rampToValueAtTime(carrierF, initialTime)
     modulationIndex.rampToValueAtTime(modLevel, initialTime)
@@ -126,7 +140,6 @@ function intialiseSynth () {
     carrierAmplitude.rampToValueAtTime(carrierA, initialTime + attackTime)
     carrierAmplitude.rampToValueAtTime(0, totalEnvelopeTime)
     scheduleAt(onComplete, totalEnvelopeTime)
-    cancelCurrent = () => { onComplete() }
   }
 }
 

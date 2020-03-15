@@ -1,5 +1,6 @@
 import pushWrapper from 'push-wrapper'
-import { ACTION__FM_SYNTH_NOTE_OFF, ACTION__FM_SYNTH_NOTE_ON, currentPatchNumber, loadPatch, playNote, savePatch } from '../fm-synth'
+import { currentPatchNumber, loadPatch, playNote, savePatch } from '../fm-synth'
+import { activePads } from '../ui'
 
 export const initialisePush = () => ({ type: 'PUSH_INITIALISE' })
 export const gridPadPressed = (x, y, velocity) => ({ type: 'PUSH_PAD_PRESSED', x, y, velocity })
@@ -17,22 +18,7 @@ export const reducer = (state = { errors: [] }, action) => {
 
 // ---------- MIDDLEWARE ----------
 const xyToNumber = (x, y) => (x % 8) + (y * 8)
-const numberToXY = n => {
-  const y = parseInt(n / 8)
-  return { x: n - y * 8, y }
-}
-
 let push
-
-const turnOnPad = n => {
-  const { x, y } = numberToXY(n)
-  push.gridCol(x)[y].ledOn()
-}
-
-const turnOffPad = n => {
-  const { x, y } = numberToXY(n)
-  push.gridCol(x)[y].ledOff()
-}
 
 export const middleware = ({ dispatch, getState }) => next => async action => {
   switch (action.type) {
@@ -68,12 +54,25 @@ export const middleware = ({ dispatch, getState }) => next => async action => {
       return currentlyLoadedPatchNumber === invokedPatchNumber
         ? dispatch(savePatch(invokedPatchNumber))
         : dispatch(loadPatch(invokedPatchNumber))
-    case ACTION__FM_SYNTH_NOTE_ON.type:
-      turnOnPad(ACTION__FM_SYNTH_NOTE_ON.noteNumber(action) - 36)
-      return next(action)
-    case ACTION__FM_SYNTH_NOTE_OFF.type:
-      turnOffPad(ACTION__FM_SYNTH_NOTE_OFF.noteNumber(action) - 36)
-      return next(action)
   }
   return next(action)
 }
+
+/*
+// TODO show active patch on grid select buttons somehow
+// TODO re-instate turn on/off grid pads somehow
+
+const numberToXY = n => {
+  const y = parseInt(n / 8)
+  return { x: n - y * 8, y }
+}
+const turnOnPad = n => {
+  const { x, y } = numberToXY(n)
+  push.gridCol(x)[y].ledOn()
+}
+
+const turnOffPad = n => {
+  const { x, y } = numberToXY(n)
+  push.gridCol(x)[y].ledOff()
+}
+*/

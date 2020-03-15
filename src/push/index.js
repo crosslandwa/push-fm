@@ -1,6 +1,5 @@
 import pushWrapper from 'push-wrapper'
 import { currentPatchNumber, loadPatch, playNote, savePatch } from '../fm-synth'
-import { activePads } from '../ui'
 
 export const initialisePush = () => ({ type: 'PUSH_INITIALISE' })
 export const gridPadPressed = (x, y, velocity) => ({ type: 'PUSH_PAD_PRESSED', x, y, velocity })
@@ -18,21 +17,19 @@ export const reducer = (state = { errors: [] }, action) => {
 
 // ---------- MIDDLEWARE ----------
 const xyToNumber = (x, y) => (x % 8) + (y * 8)
-let push
 
 export const middleware = ({ dispatch, getState }) => next => async action => {
   switch (action.type) {
     case 'PUSH_INITIALISE':
       // TODO potentially need to have user select input/output MIDI ports and re-initialise push wrapper
-      push = await pushWrapper.webMIDIio()
+      return pushWrapper.webMIDIio()
         .then(
           ({ inputPort, outputPort }) => {
             const push = pushWrapper.push()
             inputPort.onmidimessage = event => push.midiFromHardware(event.data)
             push.onMidiToHardware(outputPort.send.bind(outputPort))
             return push
-          },
-          err => { next(pushBindingError(err.message)); return pushWrapper.push() } // Ports not found or Web MIDI API not supported
+          }
         )
         .then(push => {
           [0, 1, 2, 3, 4, 5, 6, 7].forEach(y => {
@@ -42,7 +39,7 @@ export const middleware = ({ dispatch, getState }) => next => async action => {
           })
           return push
         })
-      return
+        .catch(err => { next(pushBindingError(err.message)); return pushWrapper.push() }) // Ports not found or Web MIDI API not supported)
     case 'PUSH_PAD_PRESSED':
       next(action)
       const { x, y, velocity } = action

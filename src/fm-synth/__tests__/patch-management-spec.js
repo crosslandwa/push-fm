@@ -2,8 +2,8 @@ import { loadPatch, modLevel, savePatch, updateModLevel } from '..'
 import createStore from '../../store'
 
 describe('patch management', () => {
-  it('synth parameters can be stored and recalled as patches', () => {
-    const { dispatch, getState } = createStore()
+  it('synth parameters can be stored and recalled as patches', async () => {
+    const { dispatch, getState } = await createStore()
     expect(modLevel(getState())).toEqual(0)
 
     dispatch(updateModLevel(0.5))
@@ -24,8 +24,8 @@ describe('patch management', () => {
     expect(modLevel(getState())).toEqual(0.75)
   })
 
-  it('edits are dismissed if a patch is not saved before changing patches', () => {
-    const { dispatch, getState } = createStore()
+  it('edits are dismissed if a patch is not saved before changing patches', async () => {
+    const { dispatch, getState } = await createStore()
     expect(modLevel(getState())).toEqual(0)
 
     dispatch(updateModLevel(0.5))

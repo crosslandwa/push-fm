@@ -7,7 +7,7 @@ const reducer = combineReducers({ fmSynth, patchManagement, push })
 const naturalEnhancer = (createStore) => (...args) => createStore(...args)
 const isBrowser = !!document.getElementById('app')
 const composeEnhancers = (typeof window !== 'undefined' && window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__) || compose
-function createStore () {
+async function createStore () {
   const store = createReduxStore(
     reducer,
     composeEnhancers(
@@ -15,7 +15,7 @@ function createStore () {
       isBrowser ? persistState('patchManagement', { key: 'push-fm' }) : naturalEnhancer
     )
   )
-  store.dispatch(initialisePush())
+  await store.dispatch(initialisePush())
   store.dispatch(loadPatch(1))
   return store
 }

@@ -7,7 +7,7 @@ const wait = async (ms) => {
 
 describe('note-management', () => {
   it('details the currently playing note', async () => {
-    const { dispatch, getState } = createStore()
+    const { dispatch, getState } = await createStore()
     dispatch(playNote(36, 100))
     expect(activeNotes(getState())).toEqual([{ noteNumber: 36, velocity: 100 }])
 

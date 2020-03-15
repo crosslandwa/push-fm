@@ -1,5 +1,4 @@
-import { modLevel, updateModLevel } from '../../fm-synth'
-import { loadPatch, savePatch } from '..'
+import { loadPatch, modLevel, savePatch, updateModLevel } from '..'
 import createStore from '../../store'
 
 describe('patch management', () => {

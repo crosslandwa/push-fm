@@ -1,5 +1,4 @@
-import { ACTION__FM_SYNTH_NOTE_OFF, ACTION__FM_SYNTH_NOTE_ON } from '../fm-synth'
-import { currentPatch } from '../patch-management'
+import { ACTION__FM_SYNTH_NOTE_OFF, ACTION__FM_SYNTH_NOTE_ON, currentPatch } from '../fm-synth'
 
 const YELLOW = [220, 230, 20]
 

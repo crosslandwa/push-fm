@@ -1,7 +1,6 @@
 import { createStore as createReduxStore, applyMiddleware, combineReducers, compose } from 'redux'
 import persistState from 'redux-localstorage'
-import { middleware as fmSynthMiddleware, reducer as fmSynth } from './fm-synth'
-import { loadPatch, middleware as patchManagementMiddleware, reducer as patchManagement } from './patch-management'
+import { loadPatch, middleware as fmSynthMiddleware, patchManagementReducer as patchManagement, reducer as fmSynth } from './fm-synth'
 import { initialisePush, middleware as pushMiddleware, reducer as push } from './push'
 import { reducer as ui } from './ui'
 
@@ -13,7 +12,7 @@ function createStore () {
   const store = createReduxStore(
     reducer,
     composeEnhancers(
-      applyMiddleware(...[patchManagementMiddleware, fmSynthMiddleware, pushMiddleware]),
+      applyMiddleware(...[fmSynthMiddleware, pushMiddleware]),
       isBrowser ? persistState('patchManagement', { key: 'push-fm' }) : naturalEnhancer
     )
   )

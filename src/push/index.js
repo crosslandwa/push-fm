@@ -1,6 +1,5 @@
 import pushWrapper from 'push-wrapper'
-import { ACTION__FM_SYNTH_NOTE_OFF, ACTION__FM_SYNTH_NOTE_ON, playNote } from '../fm-synth'
-import { currentPatch, loadPatch, savePatch } from '../patch-management'
+import { ACTION__FM_SYNTH_NOTE_OFF, ACTION__FM_SYNTH_NOTE_ON, currentPatch, loadPatch, playNote, savePatch } from '../fm-synth'
 
 export const initialisePush = () => ({ type: 'PUSH_INITIALISE' })
 export const gridPadPressed = (x, y, velocity) => ({ type: 'PUSH_PAD_PRESSED', x, y, velocity })

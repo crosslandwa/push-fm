@@ -1,5 +1,7 @@
 import pushWrapper from 'push-wrapper'
+import range from '../range'
 import { currentPatchNumber, loadPatch, playNote, savePatch } from '../fm-synth'
+import { activeGridSelect, activePads } from '../ui'
 
 export const initialisePush = () => ({ type: 'PUSH_INITIALISE' })
 export const gridPadPressed = (x, y, velocity) => ({ type: 'PUSH_PAD_PRESSED', x, y, velocity })
@@ -18,6 +20,12 @@ export const reducer = (state = { errors: [] }, action) => {
 // ---------- MIDDLEWARE ----------
 const xyToNumber = (x, y) => (x % 8) + (y * 8)
 
+const resetAllHardwareUI = push => {
+  push.gridSelectButtons().forEach(selectButton => selectButton.ledOff())
+  range(0, 7).forEach(x => push.gridCol(x).forEach(pad => pad.ledOff()))
+  return push
+}
+
 export const middleware = ({ dispatch, getState }) => next => async action => {
   switch (action.type) {
     case 'PUSH_INITIALISE':
@@ -31,8 +39,12 @@ export const middleware = ({ dispatch, getState }) => next => async action => {
             return push
           }
         )
+        .then(resetAllHardwareUI)
         .then(push => {
-          [0, 1, 2, 3, 4, 5, 6, 7].forEach(y => {
+          push.gridSelectButtons().forEach((gridSelectButton, index) => {
+            gridSelectButton.onPressed(() => dispatch(gridSelectPressed(index)))
+          })
+          range(0, 7).forEach(y => {
             push.gridRow(y).forEach((pad, x) => {
               pad.onPressed(velocity => dispatch(gridPadPressed(x, y, velocity)))
             })
@@ -41,11 +53,9 @@ export const middleware = ({ dispatch, getState }) => next => async action => {
         })
         .catch(err => { next(pushBindingError(err.message)); return pushWrapper.push() }) // Ports not found or Web MIDI API not supported)
     case 'PUSH_PAD_PRESSED':
-      next(action)
       const { x, y, velocity } = action
       return dispatch(playNote(36 + xyToNumber(x, y), velocity))
     case 'PUSH_GRID_SELECT_PRESSED':
-      next(action)
       const currentlyLoadedPatchNumber = currentPatchNumber(getState())
       const invokedPatchNumber = action.x + 1
       return currentlyLoadedPatchNumber === invokedPatchNumber
@@ -55,21 +65,37 @@ export const middleware = ({ dispatch, getState }) => next => async action => {
   return next(action)
 }
 
-/*
-// TODO show active patch on grid select buttons somehow
-// TODO re-instate turn on/off grid pads somehow
-
+// ---------- RENDERING ----------
 const numberToXY = n => {
   const y = parseInt(n / 8)
   return { x: n - y * 8, y }
 }
-const turnOnPad = n => {
+const turnOnPad = (push, n, rgb) => {
   const { x, y } = numberToXY(n)
-  push.gridCol(x)[y].ledOn()
+  push.gridCol(x)[y].ledRGB(...rgb)
 }
 
-const turnOffPad = n => {
+const turnOffPad = push => n => {
   const { x, y } = numberToXY(n)
   push.gridCol(x)[y].ledOff()
 }
-*/
+
+let previousActivePads = {}
+let previousGridSelectButtons = {}
+export const render = (push, state) => {
+  const newActivePads = activePads(state)
+  const previousActivePadNumbers = Object.keys(previousActivePads)
+  const newActivePadNumbers = Object.keys(newActivePads)
+  previousActivePadNumbers.filter(n => !newActivePadNumbers.includes(n)).forEach(turnOffPad(push))
+  newActivePadNumbers.filter(n => !previousActivePadNumbers.includes(n)).forEach(n => turnOnPad(push, n, newActivePads[n]))
+  previousActivePads = newActivePads
+
+  const newActiveGridSelect = activeGridSelect(state)
+  const previousActiveGridSelectNumbers = Object.keys(previousGridSelectButtons)
+  const newActiveGridSelectNumbers = Object.keys(newActiveGridSelect)
+  previousActiveGridSelectNumbers.filter(n => !newActiveGridSelectNumbers.includes(n))
+    .forEach(n => push.gridSelectButtons()[n].ledOff())
+  newActiveGridSelectNumbers.filter(n => !previousActiveGridSelectNumbers.includes(n))
+    .forEach(n => push.gridSelectButtons()[n].ledRGB(...newActiveGridSelect[n]))
+  previousGridSelectButtons = newActiveGridSelect
+}

@@ -4,15 +4,12 @@ import './app.css'
 import { activeGridSelect, activePads } from './ui'
 import FmSynth from './fm-synth/FmSynth'
 import { gridPadPressed, gridSelectPressed } from './push'
+import range from './range'
 
 const mapStateToProps = state => ({
   activeGridSelect: activeGridSelect(state),
   activePads: activePads(state)
 })
-
-const range = (start, end) => end > start
-  ? [...Array((end + 1) - start).keys()].map(x => x + start)
-  : [...Array((start + 1) - end).keys()].map(x => x + end).reverse()
 
 const GridButton = ({ onClick, rgb = [255, 255, 255], x, y }) => (
   <button

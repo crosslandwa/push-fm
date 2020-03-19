@@ -73,29 +73,25 @@ export const reducer = (state = initialState, action) => {
 
 // ---------- MIDDLEWARE ----------
 let synth
-const initialiseSynthIfNeeded = (getState) => {
-  if (synth) return
-  synth = intialiseSynth();
-  ['modLevel'].forEach(param => {
-    const { mapping, target } = paramMapper(param)
-    synth.modulate(target, mapping(getState()), 0)
-  })
-}
 
 export const middleware = ({ dispatch, getState }) => next => async (action) => {
   switch (action.type) {
     case 'FM_SYNTH_UPDATE_PARAM':
       next(action)
-      initialiseSynthIfNeeded(getState)
+      synth = synth || intialiseSynth()
       const { mapping, target } = paramMapper(action.param) || {}
       if (mapping) {
         synth.modulate(target, mapping(getState()), 0)
       }
       return
     case 'FM_SYNTH_PLAY_NOTE':
-      initialiseSynthIfNeeded(getState)
+      synth = synth || intialiseSynth()
       next(noteOn(action.noteNumber, action.velocity))
-      synth.modulate('carrierFrequency', midiNoteToF(action.noteNumber), 0)
+      synth.modulate('carrierFrequency', midiNoteToF(action.noteNumber), 0);
+      ['modLevel'].forEach(param => {
+        const { mapping, target } = paramMapper(param)
+        synth.modulate(target, mapping(getState()), 0)
+      })
       synth.vca(
         action.velocity / 127,
         Math.max(0.005, env1Attack(getState()) * 8), // 5ms min

@@ -73,16 +73,29 @@ export const reducer = (state = initialState, action) => {
 
 // ---------- MIDDLEWARE ----------
 let synth
+const initialiseSynthIfNeeded = (getState) => {
+  if (synth) return
+  synth = intialiseSynth();
+  ['modLevel'].forEach(param => {
+    const { mapping, target } = paramMapper(param)
+    synth.modulate(target, mapping(getState()), 0)
+  })
+}
 
 export const middleware = ({ dispatch, getState }) => next => async (action) => {
   switch (action.type) {
-    case 'FM_SYNTH_PLAY_NOTE':
-      if (!synth) {
-        synth = intialiseSynth()
+    case 'FM_SYNTH_UPDATE_PARAM':
+      next(action)
+      initialiseSynthIfNeeded(getState)
+      const { mapping, target } = paramMapper(action.param) || {}
+      if (mapping) {
+        synth.modulate(target, mapping(getState()), 0)
       }
+      return
+    case 'FM_SYNTH_PLAY_NOTE':
+      initialiseSynthIfNeeded(getState)
       next(noteOn(action.noteNumber, action.velocity))
-      synth.modulate('carrierFrequency', midiNoteToF(action.noteNumber))
-      synth.modulate('modulationIndex', Math.pow(modLevel(getState()), 3) * 500)
+      synth.modulate('carrierFrequency', midiNoteToF(action.noteNumber), 0)
       synth.vca(
         action.velocity / 127,
         Math.max(0.005, env1Attack(getState()) * 8), // 5ms min
@@ -105,6 +118,12 @@ export const middleware = ({ dispatch, getState }) => next => async (action) => 
       return next(action)
   }
   return next(action)
+}
+
+const paramMapper = (name) => {
+  return {
+    modLevel: { mapping: (state) => Math.pow(modLevel(state), 3) * 500, target: 'modulationIndex' }
+  }[name]
 }
 
 // ---------- FM SYNTH ----------
@@ -142,7 +161,7 @@ function intialiseSynth () {
     modulate: (param, target, time) => {
       if (!modulatables[param]) return
       const initialTime = now()
-      const totalEnvelopeTime = initialTime + (time || 0)
+      const totalEnvelopeTime = initialTime + time
       modulatables[param].holdAtCurrentValue()
       modulatables[param].rampToValueAtTime(target, totalEnvelopeTime)
     },

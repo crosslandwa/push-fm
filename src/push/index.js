@@ -1,8 +1,20 @@
 import pushWrapper from 'push-wrapper'
 import range from '../range'
-import { currentPatchNumber, loadPatch, playNote, savePatch } from '../fm-synth'
-import { activeGridSelect, activePads } from '../ui'
+import { activeNotes, currentPatchNumber, loadPatch, playNoteAndRelease, savePatch } from '../fm-synth'
 
+const YELLOW = [220, 230, 20]
+
+// ---------- SELECTOR ----------
+export const activeGridSelect = state => ({ [currentPatchNumber(state) - 1]: YELLOW })
+export const activePads = state => activeNotes(state)
+  .map(x => x.noteNumber - 36)
+  .filter(x => x >= 0)
+  .reduce(
+    (acc, it) => ({ ...acc, [it]: YELLOW }),
+    {}
+  )
+
+// ---------- ACTION ----------
 export const initialisePush = () => ({ type: 'PUSH_INITIALISE' })
 export const gridPadPressed = (x, y, velocity) => ({ type: 'PUSH_PAD_PRESSED', x, y, velocity })
 export const gridSelectPressed = (x) => ({ type: 'PUSH_GRID_SELECT_PRESSED', x })
@@ -54,7 +66,9 @@ export const middleware = ({ dispatch, getState }) => next => async action => {
         .catch(err => { next(pushBindingError(err.message)); return pushWrapper.push() }) // Ports not found or Web MIDI API not supported)
     case 'PUSH_PAD_PRESSED':
       const { x, y, velocity } = action
-      return dispatch(playNote(36 + xyToNumber(x, y), velocity))
+      // TODO playNote / releaseNote for Push pads (and playNoteAndRelease only for web UI)
+      dispatch(playNoteAndRelease(36 + xyToNumber(x, y), velocity))
+      return
     case 'PUSH_GRID_SELECT_PRESSED':
       const currentlyLoadedPatchNumber = currentPatchNumber(getState())
       const invokedPatchNumber = action.x + 1

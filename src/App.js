@@ -1,9 +1,8 @@
 import React from 'react'
 import { connect } from 'react-redux'
 import './app.css'
-import { activeGridSelect, activePads } from './ui'
 import FmSynth from './fm-synth/FmSynth'
-import { gridPadPressed, gridSelectPressed } from './push'
+import { activeGridSelect, activePads, gridPadPressed, gridSelectPressed } from './push'
 import range from './range'
 
 const mapStateToProps = state => ({

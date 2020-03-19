@@ -80,12 +80,9 @@ export const middleware = ({ dispatch, getState }) => next => async (action) => 
       if (!synth) {
         synth = intialiseSynth()
       }
-      // const carrierAEnvelope = {
-      //   attackTime: Math.max(0.005, env1Attack(getState()) * 8), // 5ms min
-      //   level: action.velocity / 127,
-      //   releaseTime: Math.max(0.005, env1Release(getState()) * 8) // 5ms min
-      // }
       next(noteOn(action.noteNumber, action.velocity))
+      synth.modulate('carrierFrequency', midiNoteToF(action.noteNumber))
+      synth.modulate('modulationIndex', Math.pow(modLevel(getState()), 3) * 500)
       synth.vca(
         action.velocity / 127,
         Math.max(0.005, env1Attack(getState()) * 8), // 5ms min
@@ -93,12 +90,6 @@ export const middleware = ({ dispatch, getState }) => next => async (action) => 
           ? () => dispatch(releaseNote(action.noteNumber))
           : () => {}
       )
-      // synth(
-      //   () => next(noteOff(action.noteNumber)),
-      //   carrierAEnvelope,
-      //   midiNoteToF(action.noteNumber),
-      //   Math.pow(modLevel(getState()), 3) * 500
-      // )
       return
     case 'FM_SYNTH_RELEASE_NOTE':
       return new Promise(resolve => synth.vca(
@@ -121,6 +112,7 @@ function intialiseSynth () {
   const context = (window.AudioContext || window.webkitAudioContext) && new (window.AudioContext || window.webkitAudioContext)()
   if (!context) {
     return {
+      modulate: (param, target, time) => {},
       vca: (target, time, onComplete) => {
         onComplete && setTimeout(onComplete, time * 1000)
       }
@@ -129,8 +121,8 @@ function intialiseSynth () {
   const { audioParam, multiply, now, oscillator, scheduleAt } = operatorFactory(context)
 
   const carrierAmplitude = audioParam(0)
-  const carrierFrequency = audioParam(440) // TODO initialise to 0
-  const harmonicityRatio = audioParam(0.99)
+  const carrierFrequency = audioParam(0)
+  const harmonicityRatio = audioParam(0.99) // TODO control via UI
   const modulationIndex = audioParam(0)
 
   const carrierFrequencyTimesHarmonicityRatio = multiply(carrierFrequency, harmonicityRatio)
@@ -144,31 +136,27 @@ function intialiseSynth () {
 
   output.connect(context.destination)
 
+  const modulatables = { carrierFrequency, harmonicityRatio, modulationIndex }
+
   return {
+    modulate: (param, target, time) => {
+      if (!modulatables[param]) return
+      const initialTime = now()
+      const totalEnvelopeTime = initialTime + (time || 0)
+      modulatables[param].holdAtCurrentValue()
+      modulatables[param].rampToValueAtTime(target, totalEnvelopeTime)
+    },
     vca: (target, time, onComplete) => {
       const initialTime = now()
       const totalEnvelopeTime = initialTime + time
-      console.log('vca', target, totalEnvelopeTime, initialTime)
       carrierAmplitude.holdAtCurrentValue()
       carrierAmplitude.rampToValueAtTime(target, totalEnvelopeTime)
       onComplete && scheduleAt(onComplete, totalEnvelopeTime)
     }
   }
-  // return (onComplete, carrierAEnvelope, carrierF, modLevel) => {
-  //   const initialTime = now()
-  //   carrierFrequency.rampToValueAtTime(carrierF, initialTime)
-  //   modulationIndex.rampToValueAtTime(modLevel, initialTime)
-
-  //   carrierAmplitude.holdAtCurrentValue()
-  //   const { attackTime, level: carrierA, releaseTime } = carrierAEnvelope
-  //   const totalEnvelopeTime = initialTime + attackTime + releaseTime
-  //   carrierAmplitude.rampToValueAtTime(carrierA, initialTime + attackTime)
-  //   carrierAmplitude.rampToValueAtTime(0, totalEnvelopeTime)
-  //   scheduleAt(onComplete, totalEnvelopeTime)
-  // }
 }
 
-// const midiNoteToF = note => 440.0 * Math.pow(2, (note - 69.0) / 12.0)
+const midiNoteToF = note => 440.0 * Math.pow(2, (note - 69.0) / 12.0)
 
 const operatorFactory = audioContext => {
   function oscillator (frequencyModulators = []) {

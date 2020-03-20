@@ -8,6 +8,7 @@ export const releaseNote = noteNumber => ({ type: 'FM_SYNTH_RELEASE_NOTE', noteN
 export const savePatch = patchNumber => ({ type: 'FM_SYNTH_SAVE_PATCH', patchNumber })
 export const updateEnv1Attack = level => updateParam('env1Attack', level)
 export const updateEnv1Release = level => updateParam('env1Release', level)
+export const updateHarmonicityLevel = level => updateParam('harmonicityLevel', level)
 export const updateModLevel = level => updateParam('modLevel', level)
 const updateParam = (param, level) => ({ type: 'FM_SYNTH_UPDATE_PARAM', param, level: parseFloat(level) })
 
@@ -18,6 +19,7 @@ export const currentPatchNumber = (state) => patchManagement(state).currentPatch
 export const env1Attack = state => currentPatch(state).env1Attack
 export const env1Release = state => currentPatch(state).env1Release
 export const modLevel = state => currentPatch(state).modLevel
+export const harmonicityLevel = state => currentPatch(state).harmonicityLevel
 const patchManagement = state => state.patchManagement
 const savedPatch = (state, number) => patchManagement(state).patches[number]
 
@@ -42,7 +44,7 @@ export const patchManagementReducer = (state = { currentPatchNumber: 1, patches:
 // ---------- REDUCER ----------
 const initialState = {
   activeNotes: [],
-  patch: { modLevel: 0, env1Attack: 0.0025, env1Release: 0.0625 }
+  patch: { harmonicityLevel: 0.2, modLevel: 0, env1Attack: 0.0025, env1Release: 0.0625 }
 }
 
 export const reducer = (state = initialState, action) => {
@@ -88,7 +90,7 @@ export const middleware = ({ dispatch, getState }) => next => async (action) => 
       synth = synth || intialiseSynth()
       next(noteOn(action.noteNumber, action.velocity))
       synth.modulate('carrierFrequency', midiNoteToF(action.noteNumber), 0);
-      ['modLevel'].forEach(param => {
+      ['modLevel', 'harmonicityLevel'].forEach(param => {
         const { mapping, target } = paramMapper(param)
         synth.modulate(target, mapping(getState()), 0)
       })
@@ -118,7 +120,8 @@ export const middleware = ({ dispatch, getState }) => next => async (action) => 
 
 const paramMapper = (name) => {
   return {
-    modLevel: { mapping: (state) => Math.pow(modLevel(state), 3) * 500, target: 'modulationIndex' }
+    modLevel: { mapping: (state) => Math.pow(modLevel(state), 3) * 500, target: 'modulationIndex' },
+    harmonicityLevel: { mapping: state => harmonicityLevel(state) * 3.75 + 0.25, target: 'harmonicityRatio' }
   }[name]
 }
 
@@ -137,7 +140,7 @@ function intialiseSynth () {
 
   const carrierAmplitude = audioParam(0)
   const carrierFrequency = audioParam(0)
-  const harmonicityRatio = audioParam(0.99) // TODO control via UI
+  const harmonicityRatio = audioParam(1)
   const modulationIndex = audioParam(0)
 
   const carrierFrequencyTimesHarmonicityRatio = multiply(carrierFrequency, harmonicityRatio)

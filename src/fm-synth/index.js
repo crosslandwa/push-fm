@@ -75,7 +75,10 @@ export const reducer = (state = initialState, action) => {
 
 // ---------- MIDDLEWARE ----------
 let synth
-let cancelCurrentNote = () => {}
+let cancel = {
+  noteOn: () => {},
+  noteOff: () => {}
+}
 
 export const middleware = ({ dispatch, getState }) => next => async (action) => {
   switch (action.type) {
@@ -92,6 +95,8 @@ export const middleware = ({ dispatch, getState }) => next => async (action) => 
       if (activeNotes(getState()).length) {
         // TODO multiple voices/voice stealing/cancel specific note
         activeNotes(getState()).map(({ noteNumber }) => noteOff(noteNumber)).map(dispatch)
+        cancel.noteOn()
+        cancel.noteOff()
       }
       next(noteOn(action.noteNumber, action.velocity))
       synth.modulate('carrierFrequency', midiNoteToF(action.noteNumber), 0);
@@ -99,22 +104,22 @@ export const middleware = ({ dispatch, getState }) => next => async (action) => 
         const { mapping, target } = paramMapper(param)
         synth.modulate(target, mapping(getState()), 0)
       })
-      cancelCurrentNote()
       // TODO apply ADSR to vca
-      cancelCurrentNote = synth.vca(
+      cancel.noteOn = synth.vca(
         action.velocity / 127,
-        Math.max(0.005, env1Attack(getState()) * 8), // 5ms min
+        mapToEnvelopeSectionTime(env1Attack(getState())),
         action.autoRelease
           ? () => dispatch(releaseNote(action.noteNumber))
           : () => {}
       )
       return
     case 'FM_SYNTH_RELEASE_NOTE':
-      return new Promise(resolve => synth.vca(
+      cancel.noteOff = synth.vca(
         0,
-        Math.max(0.005, env1Release(getState()) * 8), // 5ms min
-        resolve
-      )).then(() => next(noteOff(action.noteNumber)))
+        mapToEnvelopeSectionTime(env1Release(getState())),
+        () => next(noteOff(action.noteNumber))
+      )
+      return
     case 'FM_SYNTH_LOAD_PATCH':
       action.patch = savedPatch(getState(), action.patchNumber)
       return next(action)
@@ -124,6 +129,9 @@ export const middleware = ({ dispatch, getState }) => next => async (action) => 
   }
   return next(action)
 }
+
+// maps to 5ms min, 8s max
+const mapToEnvelopeSectionTime = value => Math.max(0.005, value * 8) // 5ms min
 
 const paramMapper = (name) => {
   return {

@@ -75,6 +75,7 @@ export const reducer = (state = initialState, action) => {
 
 // ---------- MIDDLEWARE ----------
 let synth
+let cancelCurrentNote = () => {}
 
 export const middleware = ({ dispatch, getState }) => next => async (action) => {
   switch (action.type) {
@@ -88,13 +89,19 @@ export const middleware = ({ dispatch, getState }) => next => async (action) => 
       return
     case 'FM_SYNTH_PLAY_NOTE':
       synth = synth || intialiseSynth()
+      if (activeNotes(getState()).length) {
+        // TODO multiple voices/voice stealing/cancel specific note
+        activeNotes(getState()).map(({ noteNumber }) => noteOff(noteNumber)).map(dispatch)
+      }
       next(noteOn(action.noteNumber, action.velocity))
       synth.modulate('carrierFrequency', midiNoteToF(action.noteNumber), 0);
       ['modLevel', 'harmonicityLevel'].forEach(param => {
         const { mapping, target } = paramMapper(param)
         synth.modulate(target, mapping(getState()), 0)
       })
-      synth.vca(
+      cancelCurrentNote()
+      // TODO apply ADSR to vca
+      cancelCurrentNote = synth.vca(
         action.velocity / 127,
         Math.max(0.005, env1Attack(getState()) * 8), // 5ms min
         action.autoRelease
@@ -132,7 +139,8 @@ function intialiseSynth () {
     return {
       modulate: (param, target, time) => {},
       vca: (target, time, onComplete) => {
-        onComplete && setTimeout(onComplete, time * 1000)
+        const handle = onComplete && setTimeout(onComplete, time * 1000)
+        return handle ? () => clearTimeout(handle) : () => {}
       }
     }
   }
@@ -169,7 +177,9 @@ function intialiseSynth () {
       const totalEnvelopeTime = initialTime + time
       carrierAmplitude.holdAtCurrentValue()
       carrierAmplitude.rampToValueAtTime(target, totalEnvelopeTime)
-      onComplete && scheduleAt(onComplete, totalEnvelopeTime)
+      return onComplete
+        ? scheduleAt(onComplete, totalEnvelopeTime)
+        : () => {}
     }
   }
 }

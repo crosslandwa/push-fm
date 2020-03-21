@@ -76,8 +76,8 @@ export const reducer = (state = initialState, action) => {
 // ---------- MIDDLEWARE ----------
 let synth
 let cancel = {
-  noteOn: () => {},
-  noteOff: () => {}
+  whenNoteOnFinished: () => {},
+  whenNoteOffFinished: () => {}
 }
 
 export const middleware = ({ dispatch, getState }) => next => async (action) => {
@@ -95,8 +95,8 @@ export const middleware = ({ dispatch, getState }) => next => async (action) => 
       if (activeNotes(getState()).length) {
         // TODO multiple voices/voice stealing/cancel specific note
         activeNotes(getState()).map(({ noteNumber }) => noteOff(noteNumber)).map(dispatch)
-        cancel.noteOn()
-        cancel.noteOff()
+        cancel.whenNoteOnFinished()
+        cancel.whenNoteOffFinished()
       }
       next(noteOn(action.noteNumber, action.velocity))
       synth.modulate('carrierFrequency', midiNoteToF(action.noteNumber), 0);
@@ -105,7 +105,7 @@ export const middleware = ({ dispatch, getState }) => next => async (action) => 
         synth.modulate(target, mapping(getState()), 0)
       })
       // TODO apply ADSR to vca
-      cancel.noteOn = synth.vca(
+      cancel.whenNoteOnFinished = synth.vca(
         action.velocity / 127,
         mapToEnvelopeSectionTime(env1Attack(getState())),
         action.autoRelease
@@ -115,7 +115,7 @@ export const middleware = ({ dispatch, getState }) => next => async (action) => 
       return
     case 'FM_SYNTH_RELEASE_NOTE':
       if (activeNotes(getState()).find(({ noteNumber }) => noteNumber === action.noteNumber)) {
-        cancel.noteOff = synth.vca(
+        cancel.whenNoteOffFinished = synth.vca(
           0,
           mapToEnvelopeSectionTime(env1Release(getState())),
           () => next(noteOff(action.noteNumber))

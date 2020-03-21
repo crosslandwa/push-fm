@@ -114,11 +114,13 @@ export const middleware = ({ dispatch, getState }) => next => async (action) => 
       )
       return
     case 'FM_SYNTH_RELEASE_NOTE':
-      cancel.noteOff = synth.vca(
-        0,
-        mapToEnvelopeSectionTime(env1Release(getState())),
-        () => next(noteOff(action.noteNumber))
-      )
+      if (activeNotes(getState()).find(({ noteNumber }) => noteNumber === action.noteNumber)) {
+        cancel.noteOff = synth.vca(
+          0,
+          mapToEnvelopeSectionTime(env1Release(getState())),
+          () => next(noteOff(action.noteNumber))
+        )
+      }
       return
     case 'FM_SYNTH_LOAD_PATCH':
       action.patch = savedPatch(getState(), action.patchNumber)

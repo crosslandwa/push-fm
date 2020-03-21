@@ -1,6 +1,6 @@
 import pushWrapper from 'push-wrapper'
 import range from '../range'
-import { activeNotes, currentPatchNumber, loadPatch, playNoteAndRelease, savePatch } from '../fm-synth'
+import { activeNotes, currentPatchNumber, loadPatch, playNote, playNoteAndRelease, releaseNote, savePatch } from '../fm-synth'
 
 const YELLOW = [220, 230, 20]
 
@@ -16,7 +16,8 @@ export const activePads = state => activeNotes(state)
 
 // ---------- ACTION ----------
 export const initialisePush = () => ({ type: 'PUSH_INITIALISE' })
-export const gridPadPressed = (x, y, velocity) => ({ type: 'PUSH_PAD_PRESSED', x, y, velocity })
+export const gridPadPressed = (x, y, velocity, autoRelease = true) => ({ type: 'PUSH_PAD_PRESSED', x, y, velocity, autoRelease })
+export const gridPadReleased = (x, y) => ({ type: 'PUSH_PAD_RELEASED', x, y })
 export const gridSelectPressed = (x) => ({ type: 'PUSH_GRID_SELECT_PRESSED', x })
 const pushBindingError = error => ({ type: 'PUSH_BINDING_ERROR', error })
 
@@ -58,16 +59,19 @@ export const middleware = ({ dispatch, getState }) => next => async action => {
           })
           range(0, 7).forEach(y => {
             push.gridRow(y).forEach((pad, x) => {
-              pad.onPressed(velocity => dispatch(gridPadPressed(x, y, velocity)))
+              pad.onPressed(velocity => dispatch(gridPadPressed(x, y, velocity, false)))
+              pad.onReleased(() => dispatch(gridPadReleased(x, y)))
             })
           })
           return push
         })
         .catch(err => { next(pushBindingError(err.message)); return pushWrapper.push() }) // Ports not found or Web MIDI API not supported)
     case 'PUSH_PAD_PRESSED':
-      const { x, y, velocity } = action
-      // TODO playNote / releaseNote for Push pads (and playNoteAndRelease only for web UI)
-      dispatch(playNoteAndRelease(36 + xyToNumber(x, y), velocity))
+      const { autoRelease, x, y, velocity } = action
+      dispatch((autoRelease ? playNoteAndRelease : playNote)(36 + xyToNumber(x, y), velocity))
+      return
+    case 'PUSH_PAD_RELEASED':
+      dispatch(releaseNote(36 + xyToNumber(action.x, action.y)))
       return
     case 'PUSH_GRID_SELECT_PRESSED':
       const currentlyLoadedPatchNumber = currentPatchNumber(getState())

@@ -171,8 +171,8 @@ export const createMiddleware = () => {
   return middleware
 }
 
-// maps to 5ms min, 8s max
-const mapToEnvelopeSectionTime = value => Math.max(0.005, value * 8) // 5ms min
+// maps to 5ms min, ~8s max
+const mapToEnvelopeSectionTime = value => Math.max(0.005, Math.tanh(Math.pow(value, 2) * 0.25) * 32)
 
 const paramMapper = (name) => {
   return {

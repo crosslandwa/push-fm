@@ -123,6 +123,7 @@ export const createMiddleware = () => {
           const { mapping, target } = paramMapper(param)
           synth[voiceNumber].modulate(target, mapping(getState()), 0)
         })
+        synth[voiceNumber].cancelOnVcaChangeComplete()
         // TODO apply ADSR to vca
         synth[voiceNumber].vca(
           action.velocity / 127,
@@ -135,15 +136,11 @@ export const createMiddleware = () => {
       case 'FM_SYNTH_RELEASE_NOTE':
         const voiceToTurnOff = voiceForNoteNumber(getState(), action.noteNumber)
         if (voiceToTurnOff >= 0) {
+          synth[voiceToTurnOff].cancelOnVcaChangeComplete()
           synth[voiceToTurnOff].vca(
             0,
             mapToEnvelopeSectionTime(env1Release(getState())),
-            () => {
-              const voiceForNoteNumberOnceReleaseComplete = voiceForNoteNumber(getState(), action.noteNumber)
-              if (voiceForNoteNumberOnceReleaseComplete === voiceToTurnOff) {
-                next(noteOff(voiceToTurnOff))
-              }
-            }
+            () => next(noteOff(voiceToTurnOff))
           )
         }
         return
@@ -176,12 +173,20 @@ function createSynth (numberOfVoices) {
 }
 
 function createSynthVoice (context) {
+  const cancelables = []
+
+  const cancelOnVcaChangeComplete = () => {
+    cancelables.forEach(cancel => cancel())
+    cancelables.length = 0
+  }
+
   if (!context) {
     return {
+      cancelOnVcaChangeComplete,
       modulate: (param, target, time) => {},
       vca: (target, time, onComplete) => {
         const handle = onComplete && setTimeout(onComplete, time * 1000)
-        return handle ? () => clearTimeout(handle) : () => {}
+        cancelables.push(handle ? () => clearTimeout(handle) : () => {})
       }
     }
   }
@@ -206,6 +211,7 @@ function createSynthVoice (context) {
   const modulatables = { carrierFrequency, harmonicityRatio, modulationIndex }
 
   return {
+    cancelOnVcaChangeComplete,
     modulate: (param, target, time) => {
       if (!modulatables[param]) return
       const initialTime = now()
@@ -218,9 +224,10 @@ function createSynthVoice (context) {
       const totalEnvelopeTime = initialTime + time
       carrierAmplitude.holdAtCurrentValue()
       carrierAmplitude.rampToValueAtTime(target, totalEnvelopeTime)
-      return onComplete
+      cancelables.push(onComplete
         ? scheduleAt(onComplete, totalEnvelopeTime)
         : () => {}
+      )
     }
   }
 }

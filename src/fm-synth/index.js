@@ -1,7 +1,8 @@
 // ---------- ACTIONS ----------
+export const initialiseSynth = numberOfVoices => ({ type: 'FM_SYNTH_INITIALISE', numberOfVoices })
 export const loadPatch = patchNumber => ({ type: 'FM_SYNTH_LOAD_PATCH', patchNumber })
-const noteOn = (noteNumber, velocity) => ({ type: 'FM_SYNTH_NOTE_ON', noteNumber, velocity })
-const noteOff = (noteNumber) => ({ type: 'FM_SYNTH_NOTE_OFF', noteNumber })
+const noteOff = voice => ({ type: 'FM_SYNTH_NOTE_OFF', voice })
+const noteOn = (noteNumber, velocity, voice) => ({ type: 'FM_SYNTH_NOTE_ON', noteNumber, velocity, voice })
 export const playNote = (noteNumber, velocity) => ({ type: 'FM_SYNTH_PLAY_NOTE', noteNumber, velocity, autoRelease: false })
 export const playNoteAndRelease = (noteNumber, velocity) => ({ type: 'FM_SYNTH_PLAY_NOTE', noteNumber, velocity, autoRelease: true })
 export const releaseNote = noteNumber => ({ type: 'FM_SYNTH_RELEASE_NOTE', noteNumber })
@@ -13,15 +14,34 @@ export const updateModLevel = level => updateParam('modLevel', level)
 const updateParam = (param, level) => ({ type: 'FM_SYNTH_UPDATE_PARAM', param, level: parseFloat(level) })
 
 // ---------- SELECTOR ----------
-export const activeNotes = state => state.fmSynth.activeNotes
+const activeNotes = state => state.fmSynth.activeNotes
+export const currentActiveNoteNumbers = state => activeNotes(state).map(({ noteNumber }) => noteNumber)
 const currentPatch = state => state.fmSynth.patch
 export const currentPatchNumber = (state) => patchManagement(state).currentPatchNumber
 export const env1Attack = state => currentPatch(state).env1Attack
 export const env1Release = state => currentPatch(state).env1Release
 export const modLevel = state => currentPatch(state).modLevel
+export const numberOfVoices = state => state.fmSynth.numberOfVoices
 export const harmonicityLevel = state => currentPatch(state).harmonicityLevel
 const patchManagement = state => state.patchManagement
 const savedPatch = (state, number) => patchManagement(state).patches[number]
+const voiceForNoteNumber = (state, noteNumber) => {
+  const activeNote = activeNotes(state).find(({ noteNumber: n }) => n === noteNumber)
+  return activeNote && activeNote.voice
+}
+const voiceToUseForNewNote = (state, noteNumber) => {
+  const alreadyActiveVoice = voiceForNoteNumber(state, noteNumber)
+  if (alreadyActiveVoice >= 0) {
+    return alreadyActiveVoice
+  }
+  const currentNotes = activeNotes(state)
+  if (currentNotes.length === numberOfVoices(state)) {
+    return currentNotes[0].voice // steal from oldest
+  }
+  const activeVoices = currentNotes.map(({ voice }) => voice)
+  const firstAvailableVoice = [...new Array(numberOfVoices(state)).keys()].find(voice => !activeVoices.includes(voice))
+  return firstAvailableVoice
+}
 
 // ---------- PATCH MANAGEMENT REDUCER ----------
 export const patchManagementReducer = (state = { currentPatchNumber: 1, patches: {} }, action) => {
@@ -44,11 +64,14 @@ export const patchManagementReducer = (state = { currentPatchNumber: 1, patches:
 // ---------- REDUCER ----------
 const initialState = {
   activeNotes: [],
+  numberOfVoices: 1,
   patch: { harmonicityLevel: 0.2, modLevel: 0, env1Attack: 0.0025, env1Release: 0.0625 }
 }
 
 export const reducer = (state = initialState, action) => {
   switch (action.type) {
+    case 'FM_SYNTH_INITIALISE':
+      return { ...state, numberOfVoices: action.numberOfVoices }
     case 'FM_SYNTH_LOAD_PATCH':
       return {
         ...state,
@@ -57,12 +80,12 @@ export const reducer = (state = initialState, action) => {
     case 'FM_SYNTH_NOTE_OFF':
       return {
         ...state,
-        activeNotes: state.activeNotes.filter(x => x.noteNumber !== action.noteNumber)
+        activeNotes: state.activeNotes.filter(x => x.voice !== action.voice)
       }
     case 'FM_SYNTH_NOTE_ON':
       return {
         ...state,
-        activeNotes: state.activeNotes.concat({ noteNumber: action.noteNumber, velocity: action.velocity })
+        activeNotes: state.activeNotes.concat({ noteNumber: action.noteNumber, velocity: action.velocity, voice: action.voice })
       }
     case 'FM_SYNTH_UPDATE_PARAM':
       return {
@@ -74,62 +97,61 @@ export const reducer = (state = initialState, action) => {
 }
 
 // ---------- MIDDLEWARE ----------
-let synth
-let cancel = {
-  whenNoteOnFinished: () => {},
-  whenNoteOffFinished: () => {}
-}
-
-export const middleware = ({ dispatch, getState }) => next => async (action) => {
-  switch (action.type) {
-    case 'FM_SYNTH_UPDATE_PARAM':
-      next(action)
-      synth = synth || intialiseSynth()
-      const { mapping, target } = paramMapper(action.param) || {}
-      if (mapping) {
-        synth.modulate(target, mapping(getState()), 0)
-      }
-      return
-    case 'FM_SYNTH_PLAY_NOTE':
-      synth = synth || intialiseSynth()
-      if (activeNotes(getState()).length) {
-        // TODO multiple voices/voice stealing/cancel specific note
-        activeNotes(getState()).map(({ noteNumber }) => noteOff(noteNumber)).map(dispatch)
-        cancel.whenNoteOnFinished()
-        cancel.whenNoteOffFinished()
-      }
-      next(noteOn(action.noteNumber, action.velocity))
-      synth.modulate('carrierFrequency', midiNoteToF(action.noteNumber), 0);
-      ['modLevel', 'harmonicityLevel'].forEach(param => {
-        const { mapping, target } = paramMapper(param)
-        synth.modulate(target, mapping(getState()), 0)
-      })
-      // TODO apply ADSR to vca
-      cancel.whenNoteOnFinished = synth.vca(
-        action.velocity / 127,
-        mapToEnvelopeSectionTime(env1Attack(getState())),
-        action.autoRelease
-          ? () => dispatch(releaseNote(action.noteNumber))
-          : () => {}
-      )
-      return
-    case 'FM_SYNTH_RELEASE_NOTE':
-      if (activeNotes(getState()).find(({ noteNumber }) => noteNumber === action.noteNumber)) {
-        cancel.whenNoteOffFinished = synth.vca(
-          0,
-          mapToEnvelopeSectionTime(env1Release(getState())),
-          () => next(noteOff(action.noteNumber))
+export const createMiddleware = () => {
+  let synth
+  const middleware = ({ dispatch, getState }) => next => async (action) => {
+    switch (action.type) {
+      case 'FM_SYNTH_INITIALISE':
+        next(action)
+        dispatch(loadPatch(1))
+        return
+      case 'FM_SYNTH_UPDATE_PARAM':
+        next(action)
+        synth = synth || createSynth(numberOfVoices(getState()))
+        const { mapping, target } = paramMapper(action.param) || {}
+        if (mapping) {
+          synth.forEach(voice => voice.modulate(target, mapping(getState()), 0))
+        }
+        return
+      case 'FM_SYNTH_PLAY_NOTE':
+        synth = synth || createSynth(numberOfVoices(getState()))
+        const voiceNumber = voiceToUseForNewNote(getState(), action.noteNumber)
+        next(noteOff(voiceNumber))
+        next(noteOn(action.noteNumber, action.velocity, voiceNumber))
+        synth[voiceNumber].modulate('carrierFrequency', midiNoteToF(action.noteNumber), 0);
+        ['modLevel', 'harmonicityLevel'].forEach(param => {
+          const { mapping, target } = paramMapper(param)
+          synth[voiceNumber].modulate(target, mapping(getState()), 0)
+        })
+        // TODO apply ADSR to vca
+        synth[voiceNumber].vca(
+          action.velocity / 127,
+          mapToEnvelopeSectionTime(env1Attack(getState())),
+          action.autoRelease
+            ? () => dispatch(releaseNote(action.noteNumber))
+            : () => {}
         )
-      }
-      return
-    case 'FM_SYNTH_LOAD_PATCH':
-      action.patch = savedPatch(getState(), action.patchNumber)
-      return next(action)
-    case 'FM_SYNTH_SAVE_PATCH':
-      action.patch = currentPatch(getState())
-      return next(action)
+        return
+      case 'FM_SYNTH_RELEASE_NOTE':
+        const voiceToTurnOff = voiceForNoteNumber(getState(), action.noteNumber)
+        if (voiceToTurnOff >= 0) {
+          synth[voiceToTurnOff].vca(
+            0,
+            mapToEnvelopeSectionTime(env1Release(getState())),
+            () => next(noteOff(voiceToTurnOff))
+          )
+        }
+        return
+      case 'FM_SYNTH_LOAD_PATCH':
+        action.patch = savedPatch(getState(), action.patchNumber)
+        return next(action)
+      case 'FM_SYNTH_SAVE_PATCH':
+        action.patch = currentPatch(getState())
+        return next(action)
+    }
+    return next(action)
   }
-  return next(action)
+  return middleware
 }
 
 // maps to 5ms min, 8s max
@@ -143,8 +165,12 @@ const paramMapper = (name) => {
 }
 
 // ---------- FM SYNTH ----------
-function intialiseSynth () {
+function createSynth (numberOfVoices) {
   const context = (window.AudioContext || window.webkitAudioContext) && new (window.AudioContext || window.webkitAudioContext)()
+  return [...new Array(numberOfVoices).keys()].map(() => createSynthVoice(context))
+}
+
+function createSynthVoice (context) {
   if (!context) {
     return {
       modulate: (param, target, time) => {},

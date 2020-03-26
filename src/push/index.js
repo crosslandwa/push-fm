@@ -1,13 +1,13 @@
 import pushWrapper from 'push-wrapper'
 import range from '../range'
-import { activeNotes, currentPatchNumber, loadPatch, playNote, playNoteAndRelease, releaseNote, savePatch } from '../fm-synth'
+import { currentActiveNoteNumbers, currentPatchNumber, loadPatch, playNote, playNoteAndRelease, releaseNote, savePatch } from '../fm-synth'
 
 const YELLOW = [220, 230, 20]
 
 // ---------- SELECTOR ----------
 export const activeGridSelect = state => ({ [currentPatchNumber(state) - 1]: YELLOW })
-export const activePads = state => activeNotes(state)
-  .map(x => x.noteNumber - 36)
+export const activePads = state => currentActiveNoteNumbers(state)
+  .map(x => x - 36)
   .filter(x => x >= 0)
   .reduce(
     (acc, it) => ({ ...acc, [it]: YELLOW }),

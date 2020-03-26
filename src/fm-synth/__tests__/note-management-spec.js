@@ -1,4 +1,4 @@
-import { currentActiveNoteNumbers, playNote, releaseNote, updateEnv1Attack, updateEnv1Release } from '..'
+import { currentActiveNoteNumbers, playNote, playNoteAndRelease, releaseNote, updateEnv1Attack, updateEnv1Release } from '..'
 import createStore from '../../store'
 
 const wait = async (ms) => {
@@ -31,8 +31,6 @@ describe('note-management', () => {
     expect(currentNotes()).toEqual([37])
   })
 
-  // TODO note off for stolen note should have no effect
-
   // TODO re-instate below test and fix
   // it('delays note off when re-triggering the same note', async () => {
   //   const { dispatch, getState } = await createStore()
@@ -50,19 +48,20 @@ describe('note-management', () => {
   // })
 
   it('ignores note offs for stolen notes', async () => {
-    const { dispatch, currentNotes } = await createStoreAndMinimiseEnvelopeTimes()
+    const withSingleVoice = 1
+    const { dispatch, getState } = await createStore(withSingleVoice)
+    const currentNotes = () => currentActiveNoteNumbers(getState())
 
-    dispatch(playNote(36, 100))
-    await wait(50)
+    dispatch(playNote(36, 100)) // play 1st note at T = 0
+    dispatch(releaseNote(36)) // Release 1st note (default release is 500ms...)
     expect(currentNotes()).toEqual([36])
 
-    dispatch(playNote(37, 100))
-    await wait(50)
+    await wait(350)
+    dispatch(playNote(37, 100)) // play 2nd note at T = 350, steals 1st note
     expect(currentNotes()).toEqual([37])
 
-    dispatch(releaseNote(36))
-    await wait(50)
-    expect(currentNotes()).toEqual([37])
+    await wait(250) // by T = 600 first (stolen) note would have finished...
+    expect(currentNotes()).toEqual([37]) // ...but second note is still active
   })
 
   it('voice stealing', async () => {

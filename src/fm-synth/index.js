@@ -138,7 +138,12 @@ export const createMiddleware = () => {
           synth[voiceToTurnOff].vca(
             0,
             mapToEnvelopeSectionTime(env1Release(getState())),
-            () => next(noteOff(voiceToTurnOff))
+            () => {
+              const voiceForNoteNumberOnceReleaseComplete = voiceForNoteNumber(getState(), action.noteNumber)
+              if (voiceForNoteNumberOnceReleaseComplete === voiceToTurnOff) {
+                next(noteOff(voiceToTurnOff))
+              }
+            }
           )
         }
         return

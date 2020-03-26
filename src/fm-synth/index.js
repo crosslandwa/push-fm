@@ -1,4 +1,6 @@
 // ---------- ACTIONS ----------
+const changeParamBy = (param, delta) => ({ type: 'FM_SYNTH_CHANGE_PARAM_BY', param, delta: parseFloat(delta) })
+export const changeModLevelBy = delta => changeParamBy('modLevel', delta)
 export const initialiseSynth = numberOfVoices => ({ type: 'FM_SYNTH_INITIALISE', numberOfVoices })
 export const loadPatch = patchNumber => ({ type: 'FM_SYNTH_LOAD_PATCH', patchNumber })
 const noteOff = voice => ({ type: 'FM_SYNTH_NOTE_OFF', voice })
@@ -70,6 +72,11 @@ const initialState = {
 
 export const reducer = (state = initialState, action) => {
   switch (action.type) {
+    case 'FM_SYNTH_CHANGE_PARAM_BY':
+      return {
+        ...state,
+        patch: { ...state.patch, [action.param]: Math.max(0, Math.min(1, action.delta + state.patch[[action.param]])) }
+      }
     case 'FM_SYNTH_INITIALISE':
       return { ...state, numberOfVoices: action.numberOfVoices }
     case 'FM_SYNTH_LOAD_PATCH':
@@ -106,11 +113,12 @@ export const createMiddleware = () => {
         dispatch(loadPatch(1))
         return
       case 'FM_SYNTH_UPDATE_PARAM':
+      case 'FM_SYNTH_CHANGE_PARAM_BY':
         next(action)
         synth = synth || createSynth(numberOfVoices(getState()))
         const { mapping, target } = paramMapper(action.param) || {}
         if (mapping) {
-          synth.forEach(voice => voice.modulate(target, mapping(getState()), 0))
+          synth.forEach(voice => voice.modulate(target, mapping(getState()), 0.1))
         }
         return
       case 'FM_SYNTH_PLAY_NOTE':

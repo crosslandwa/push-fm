@@ -1,6 +1,15 @@
 import pushWrapper from 'push-wrapper'
 import range from '../range'
-import { currentActiveNoteNumbers, currentPatchNumber, loadPatch, playNote, playNoteAndRelease, releaseNote, savePatch } from '../fm-synth'
+import {
+  changeModLevelBy,
+  currentActiveNoteNumbers,
+  currentPatchNumber,
+  loadPatch,
+  playNote,
+  playNoteAndRelease,
+  releaseNote,
+  savePatch
+} from '../fm-synth'
 
 const YELLOW = [220, 230, 20]
 
@@ -16,6 +25,7 @@ export const activePads = state => currentActiveNoteNumbers(state)
 
 // ---------- ACTION ----------
 export const initialisePush = () => ({ type: 'PUSH_INITIALISE' })
+export const gridChannelKnobTurned = (x, delta) => ({ type: 'PUSH_CHANNEL_KNOB_TURNED', x, delta })
 export const gridPadPressed = (x, y, velocity, autoRelease = true) => ({ type: 'PUSH_PAD_PRESSED', x, y, velocity, autoRelease })
 export const gridPadReleased = (x, y) => ({ type: 'PUSH_PAD_RELEASED', x, y })
 export const gridSelectPressed = (x) => ({ type: 'PUSH_GRID_SELECT_PRESSED', x })
@@ -63,9 +73,19 @@ export const middleware = ({ dispatch, getState }) => next => async action => {
               pad.onReleased(() => dispatch(gridPadReleased(x, y)))
             })
           })
+          push.channelKnobs().forEach((knob, x) => {
+            knob.onTurned(delta => dispatch(gridChannelKnobTurned(x, delta)))
+          })
           return push
         })
         .catch(err => { next(pushBindingError(err.message)); return pushWrapper.push() }) // Ports not found or Web MIDI API not supported)
+    case 'PUSH_CHANNEL_KNOB_TURNED':
+      switch (action.x) {
+        case 0:
+          dispatch(changeModLevelBy(action.delta * 0.01))
+          break
+      }
+      return
     case 'PUSH_PAD_PRESSED':
       const { autoRelease, x, y, velocity } = action
       dispatch((autoRelease ? playNoteAndRelease : playNote)(36 + xyToNumber(x, y), velocity))

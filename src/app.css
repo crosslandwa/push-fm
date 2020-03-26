@@ -64,3 +64,12 @@
 .push-grid__button--y-2 { top: 62.875%; }
 .push-grid__button--y-1 { top: 75.25%; }
 .push-grid__button--y-0 { top: 87.625%; }
+
+.synth-control {
+  display: inline-block;
+  margin: 0.25em;
+}
+
+.synth-control__label {
+  display: block;
+}

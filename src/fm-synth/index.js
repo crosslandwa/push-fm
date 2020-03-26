@@ -11,7 +11,9 @@ export const playNoteAndRelease = (noteNumber, velocity) => ({ type: 'FM_SYNTH_P
 export const releaseNote = noteNumber => ({ type: 'FM_SYNTH_RELEASE_NOTE', noteNumber })
 export const savePatch = patchNumber => ({ type: 'FM_SYNTH_SAVE_PATCH', patchNumber })
 export const updateEnv1Attack = level => updateParam('env1Attack', level)
+export const updateEnv1Decay = level => updateParam('env1Decay', level)
 export const updateEnv1Release = level => updateParam('env1Release', level)
+export const updateEnv1Sustain = level => updateParam('env1Sustain', level)
 export const updateHarmonicityLevel = level => updateParam('harmonicityLevel', level)
 export const updateModLevel = level => updateParam('modLevel', level)
 const updateParam = (param, level) => ({ type: 'FM_SYNTH_UPDATE_PARAM', param, level: parseFloat(level) })
@@ -22,7 +24,9 @@ export const currentActiveNoteNumbers = state => activeNotes(state).map(({ noteN
 const currentPatch = state => state.fmSynth.patch
 export const currentPatchNumber = (state) => patchManagement(state).currentPatchNumber
 export const env1Attack = state => currentPatch(state).env1Attack
+export const env1Decay = state => currentPatch(state).env1Decay
 export const env1Release = state => currentPatch(state).env1Release
+export const env1Sustain = state => currentPatch(state).env1Sustain
 export const modLevel = state => currentPatch(state).modLevel
 export const numberOfVoices = state => state.fmSynth.numberOfVoices
 export const harmonicityLevel = state => currentPatch(state).harmonicityLevel
@@ -68,7 +72,7 @@ export const patchManagementReducer = (state = { currentPatchNumber: 1, patches:
 const initialState = {
   activeNotes: [],
   numberOfVoices: 1,
-  patch: { harmonicityLevel: 0.2, modLevel: 0, env1Attack: 0.0025, env1Release: 0.0625 }
+  patch: { harmonicityLevel: 0.2, modLevel: 0, env1Attack: 0.0025, env1Decay: 0, env1Sustain: 1, env1Release: 0.0625 }
 }
 
 export const reducer = (state = initialState, action) => {

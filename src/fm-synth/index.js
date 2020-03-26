@@ -137,10 +137,11 @@ export const createMiddleware = () => {
           synth[voiceNumber].modulate(target, mapping(getState()), 0)
         })
         synth[voiceNumber].cancelOnVcaChangeComplete()
-        // TODO apply ADSR to vca
         synth[voiceNumber].vca(
-          action.velocity / 127,
-          mapToEnvelopeSectionTime(env1Attack(getState())),
+          [
+            [action.velocity / 127, mapToEnvelopeSectionTime(env1Attack(getState()))],
+            [(action.velocity / 127) * env1Sustain(getState()), mapToEnvelopeSectionTime(env1Decay(getState()))]
+          ],
           action.autoRelease
             ? () => dispatch(releaseNote(action.noteNumber))
             : () => {}
@@ -151,8 +152,9 @@ export const createMiddleware = () => {
         if (voiceToTurnOff >= 0) {
           synth[voiceToTurnOff].cancelOnVcaChangeComplete()
           synth[voiceToTurnOff].vca(
-            0,
-            mapToEnvelopeSectionTime(env1Release(getState())),
+            [
+              [0, mapToEnvelopeSectionTime(env1Release(getState()))]
+            ],
             () => next(noteOff(voiceToTurnOff))
           )
         }
@@ -197,8 +199,12 @@ function createSynthVoice (context) {
     return {
       cancelOnVcaChangeComplete,
       modulate: (param, target, time) => {},
-      vca: (target, time, onComplete) => {
-        const handle = onComplete && setTimeout(onComplete, time * 1000)
+      vca: (envelopeSegments, onComplete) => {
+        const totalTime = envelopeSegments.reduce(
+          (acc, [target, time]) => acc + time,
+          0
+        )
+        const handle = onComplete && setTimeout(onComplete, totalTime * 1000)
         cancelables.push(handle ? () => clearTimeout(handle) : () => {})
       }
     }
@@ -232,11 +238,17 @@ function createSynthVoice (context) {
       modulatables[param].holdAtCurrentValue()
       modulatables[param].rampToValueAtTime(target, totalEnvelopeTime)
     },
-    vca: (target, time, onComplete) => {
+    vca: (envelopeSegments, onComplete) => {
       const initialTime = now()
-      const totalEnvelopeTime = initialTime + time
       carrierAmplitude.holdAtCurrentValue()
-      carrierAmplitude.rampToValueAtTime(target, totalEnvelopeTime)
+      const totalEnvelopeTime = envelopeSegments.reduce(
+        (totalTime, [target, time]) => {
+          const endTime = totalTime + time
+          carrierAmplitude.rampToValueAtTime(target, endTime)
+          return endTime
+        },
+        initialTime
+      )
       cancelables.push(onComplete
         ? scheduleAt(onComplete, totalEnvelopeTime)
         : () => {}

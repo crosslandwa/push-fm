@@ -1,5 +1,6 @@
 // ---------- ACTIONS ----------
 const changeParamBy = (param, delta) => ({ type: 'FM_SYNTH_CHANGE_PARAM_BY', param, delta: parseFloat(delta) })
+export const changeHarmonicityLevelBy = delta => changeParamBy('harmonicityLevel', delta)
 export const changeModLevelBy = delta => changeParamBy('modLevel', delta)
 export const initialiseSynth = numberOfVoices => ({ type: 'FM_SYNTH_INITIALISE', numberOfVoices })
 export const loadPatch = patchNumber => ({ type: 'FM_SYNTH_LOAD_PATCH', patchNumber })

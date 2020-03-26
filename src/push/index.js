@@ -1,6 +1,7 @@
 import pushWrapper from 'push-wrapper'
 import range from '../range'
 import {
+  changeHarmonicityLevelBy,
   changeModLevelBy,
   currentActiveNoteNumbers,
   currentPatchNumber,
@@ -80,11 +81,8 @@ export const middleware = ({ dispatch, getState }) => next => async action => {
         })
         .catch(err => { next(pushBindingError(err.message)); return pushWrapper.push() }) // Ports not found or Web MIDI API not supported)
     case 'PUSH_CHANNEL_KNOB_TURNED':
-      switch (action.x) {
-        case 0:
-          dispatch(changeModLevelBy(action.delta * 0.01))
-          break
-      }
+      const f = [changeModLevelBy, changeHarmonicityLevelBy][action.x]
+      f && dispatch(f(action.delta * 0.01))
       return
     case 'PUSH_PAD_PRESSED':
       const { autoRelease, x, y, velocity } = action

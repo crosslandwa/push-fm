@@ -32,18 +32,18 @@ describe('note-management', () => {
   })
 
   it('delays note off when re-triggering the same note', async () => {
-    const withSingleVoice = 2
+    const withSingleVoice = 1
     const { dispatch, getState } = await createStore(withSingleVoice)
-    dispatch(playNoteAndRelease(36, 100)) // play 1st note at T = 0. Should get note off ~ T = 500ms (default release is 500ms...)
+    dispatch(playNoteAndRelease(36, 100)) // play 1st note at T = 0. Should get note off ~ T = 350ms (default release is 350ms...)
 
-    await wait(250)
-    dispatch(playNoteAndRelease(36, 100)) // play 2nd note at T = 250. Should get note off ~ T = 750ms
+    await wait(150)
+    dispatch(playNoteAndRelease(36, 100)) // play 2nd note at T = 150. Should get note off ~ T = 500ms
 
-    await wait(350) // so at T = 600 1st note-off "should" have fired (if it is not cancelled as part of the voice stealing)
+    await wait(250) // so at T = 400 1st note-off "would" have fired (if it is not cancelled as part of the voice stealing)
 
     expect(currentActiveNoteNumbers(getState())).toHaveLength(1) // i.e. 1st note-off cancelled, 2nd note-off is yet to fire
 
-    await wait(200) // so at T = 800 2nd note-off "should" have fired
+    await wait(200) // so at T = 600 2nd note-off "should" have fired
     expect(currentActiveNoteNumbers(getState())).toHaveLength(0)
   })
 

@@ -72,7 +72,14 @@ export const patchManagementReducer = (state = { currentPatchNumber: 1, patches:
 const initialState = {
   activeNotes: [],
   numberOfVoices: 1,
-  patch: { harmonicityLevel: 0.2, modLevel: 0, env1Attack: 0.0025, env1Decay: 0, env1Sustain: 1, env1Release: 0.0625 }
+  patch: {
+    harmonicityLevel: 0.2,
+    modLevel: 0,
+    env1Attack: 0, // ~ 5ms
+    env1Decay: 0, // ~ 5ms
+    env1Sustain: 1,
+    env1Release: 0.4 // ~ 350ms
+  }
 }
 
 export const reducer = (state = initialState, action) => {
@@ -109,6 +116,14 @@ export const reducer = (state = initialState, action) => {
 }
 
 // ---------- MIDDLEWARE ----------
+const compose = (...funcs) => x => funcs.slice().reverse().reduce((acc, f) => f(acc), x)
+const scaleLinearly = (min, max) => x => x * (max - min) + min
+const exponentialScale = (factor) => x => (1 - Math.exp(-1 * factor * x)) / (1 - Math.exp(-1 * factor))
+
+// maps to 5ms min, ~8s max
+// scaled such that 0.125 => ~0.05, 0.25 => ~0.14, 0.5 => ~0.61, 0.75 => ~2.25
+const mapToEnvelopeSectionTime = compose(scaleLinearly(0.005, 8), exponentialScale(-5))
+
 export const createMiddleware = () => {
   let synth
   const middleware = ({ dispatch, getState }) => next => async (action) => {
@@ -170,9 +185,6 @@ export const createMiddleware = () => {
   }
   return middleware
 }
-
-// maps to 5ms min, ~8s max
-const mapToEnvelopeSectionTime = value => Math.max(0.005, Math.tanh(Math.pow(value, 2) * 0.25) * 32)
 
 const paramMapper = (name) => {
   return {

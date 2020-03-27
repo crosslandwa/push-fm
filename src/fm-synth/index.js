@@ -151,7 +151,6 @@ export const createMiddleware = () => {
           const { mapping, target } = paramMapper(param)
           synth[voiceNumber].modulate(target, mapping(getState()), 0)
         })
-        synth[voiceNumber].cancelOnVcaChangeComplete()
         synth[voiceNumber].vca(
           [
             [action.velocity / 127, mapToEnvelopeSectionTime(env1Attack(getState()))],
@@ -165,7 +164,6 @@ export const createMiddleware = () => {
       case 'FM_SYNTH_RELEASE_NOTE':
         const voiceToTurnOff = voiceForNoteNumber(getState(), action.noteNumber)
         if (voiceToTurnOff >= 0) {
-          synth[voiceToTurnOff].cancelOnVcaChangeComplete()
           synth[voiceToTurnOff].vca(
             [
               [0, mapToEnvelopeSectionTime(env1Release(getState()))]
@@ -209,9 +207,9 @@ function createSynthVoice (context) {
 
   if (!context) {
     return {
-      cancelOnVcaChangeComplete,
       modulate: (param, target, time) => {},
       vca: (envelopeSegments, onComplete) => {
+        cancelOnVcaChangeComplete()
         const totalTime = envelopeSegments.reduce(
           (acc, [target, time]) => acc + time,
           0
@@ -242,7 +240,6 @@ function createSynthVoice (context) {
   const modulatables = { carrierFrequency, harmonicityRatio, modulationIndex }
 
   return {
-    cancelOnVcaChangeComplete,
     modulate: (param, target, time) => {
       if (!modulatables[param]) return
       const initialTime = now()
@@ -251,6 +248,7 @@ function createSynthVoice (context) {
       modulatables[param].rampToValueAtTime(target, totalEnvelopeTime)
     },
     vca: (envelopeSegments, onComplete) => {
+      cancelOnVcaChangeComplete()
       const initialTime = now()
       carrierAmplitude.holdAtCurrentValue()
       const totalEnvelopeTime = envelopeSegments.reduce(

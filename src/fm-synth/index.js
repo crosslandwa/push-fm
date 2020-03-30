@@ -14,6 +14,10 @@ export const updateEnv1Attack = level => updateParam('env1Attack', level)
 export const updateEnv1Decay = level => updateParam('env1Decay', level)
 export const updateEnv1Release = level => updateParam('env1Release', level)
 export const updateEnv1Sustain = level => updateParam('env1Sustain', level)
+export const updateEnv2Attack = level => updateParam('env2Attack', level)
+export const updateEnv2Decay = level => updateParam('env2Decay', level)
+export const updateEnv2Release = level => updateParam('env2Release', level)
+export const updateEnv2Sustain = level => updateParam('env2Sustain', level)
 export const updateHarmonicityLevel = level => updateParam('harmonicityLevel', level)
 export const updateModLevel = level => updateParam('modLevel', level)
 const updateParam = (param, level) => ({ type: 'FM_SYNTH_UPDATE_PARAM', param, level: parseFloat(level) })
@@ -27,6 +31,10 @@ export const env1Attack = state => currentPatch(state).env1Attack
 export const env1Decay = state => currentPatch(state).env1Decay
 export const env1Release = state => currentPatch(state).env1Release
 export const env1Sustain = state => currentPatch(state).env1Sustain
+export const env2Attack = state => currentPatch(state).env2Attack
+export const env2Decay = state => currentPatch(state).env2Decay
+export const env2Release = state => currentPatch(state).env2Release
+export const env2Sustain = state => currentPatch(state).env2Sustain
 export const modLevel = state => currentPatch(state).modLevel
 export const numberOfVoices = state => state.fmSynth.numberOfVoices
 export const harmonicityLevel = state => currentPatch(state).harmonicityLevel
@@ -78,7 +86,11 @@ const initialState = {
     env1Attack: 0, // ~ 5ms
     env1Decay: 0, // ~ 5ms
     env1Sustain: 1,
-    env1Release: 0.4 // ~ 350ms
+    env1Release: 0.4, // ~ 350ms
+    env2Attack: 0.5,
+    env2Decay: 0.5,
+    env2Sustain: 0.5,
+    env2Release: 0.5
   }
 }
 

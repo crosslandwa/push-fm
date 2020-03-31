@@ -162,7 +162,7 @@ export const createMiddleware = () => {
         next(noteOff(voiceNumber))
         next(noteOn(action.noteNumber, action.velocity, voiceNumber))
         synth[voiceNumber].modulateCarrierFrequency(midiNoteToF(action.noteNumber), 0);
-        ['modLevel', 'harmonicityLevel'].forEach(param => {
+        ['harmonicityLevel', 'modLevel', 'modLevelEnv2Amount'].forEach(param => {
           const { mapping, target } = paramMapper(param)
           synth[voiceNumber][target](mapping(getState()), 0)
         })
@@ -175,6 +175,11 @@ export const createMiddleware = () => {
             ? () => dispatch(releaseNote(action.noteNumber))
             : () => {}
         )
+        synth[voiceNumber].vca2([
+          [0, 0],
+          [1, mapToEnvelopeSectionTime(env2Attack(getState()))],
+          [env2Sustain(getState()), mapToEnvelopeSectionTime(env2Decay(getState()))]
+        ])
         return
       case 'FM_SYNTH_RELEASE_NOTE':
         const voiceToTurnOff = voiceForNoteNumber(getState(), action.noteNumber)
@@ -185,6 +190,9 @@ export const createMiddleware = () => {
             ],
             () => next(noteOff(voiceToTurnOff))
           )
+          synth[voiceToTurnOff].vca2([
+            [0, mapToEnvelopeSectionTime(env2Release(getState()))]
+          ])
         }
         return
       case 'FM_SYNTH_LOAD_PATCH':
@@ -201,8 +209,9 @@ export const createMiddleware = () => {
 
 const paramMapper = (name) => {
   return {
+    harmonicityLevel: { mapping: state => harmonicityLevel(state) * 3.75 + 0.25, target: 'modulateHarmonicityRatio' },
     modLevel: { mapping: (state) => Math.pow(modLevel(state), 3) * 500, target: 'modulateModulationIndex' },
-    harmonicityLevel: { mapping: state => harmonicityLevel(state) * 3.75 + 0.25, target: 'modulateHarmonicityRatio' }
+    modLevelEnv2Amount: { mapping: state => (modLevelEnv2Amount(state) * 2) - 1, target: 'modulateModulationIndexEnv2Amount' }
   }[name]
 }
 
@@ -225,6 +234,7 @@ function createSynthVoice (context) {
       modulateCarrierFrequency: (target, time) => {},
       modulateHarmonicityRatio: (target, time) => {},
       modulateModulationIndex: (target, time) => {},
+      modulateModulationIndexEnv2Amount: (target, time) => {},
       vca: (envelopeSegments, onComplete) => {
         cancelOnVcaChangeComplete()
         const totalTime = envelopeSegments.reduce(
@@ -233,20 +243,24 @@ function createSynthVoice (context) {
         )
         const handle = onComplete && setTimeout(onComplete, totalTime * 1000)
         cancelables.push(handle ? () => clearTimeout(handle) : () => {})
-      }
+      },
+      vca2: (envelopeSegments) => {}
     }
   }
-  const { audioParam, multiply, now, oscillator, scheduleAt } = operatorFactory(context)
+  const { audioParam, multiply, now, oscillator, scheduleAt, sum } = operatorFactory(context)
 
   const carrierAmplitude = audioParam(0)
   const carrierFrequency = audioParam(0)
   const harmonicityRatio = audioParam(1)
   const modulationIndex = audioParam(0)
+  const envelope2 = audioParam(0)
+  const modulationIndexEnv2Amount = audioParam(0)
 
+  const envelopedModulationIndex = multiply(modulationIndexEnv2Amount, multiply(envelope2, modulationIndex))
   const carrierFrequencyTimesHarmonicityRatio = multiply(carrierFrequency, harmonicityRatio)
   const modulatorOsc = multiply(
     oscillator([carrierFrequencyTimesHarmonicityRatio]),
-    multiply(carrierFrequencyTimesHarmonicityRatio, modulationIndex)
+    multiply(carrierFrequencyTimesHarmonicityRatio, sum(modulationIndex, envelopedModulationIndex))
   )
 
   const carrierOsc = oscillator([carrierFrequency, modulatorOsc])
@@ -265,6 +279,7 @@ function createSynthVoice (context) {
     modulateCarrierFrequency: modulate(carrierFrequency),
     modulateHarmonicityRatio: modulate(harmonicityRatio),
     modulateModulationIndex: modulate(modulationIndex),
+    modulateModulationIndexEnv2Amount: modulate(modulationIndexEnv2Amount),
     vca: (envelopeSegments, onComplete) => {
       cancelOnVcaChangeComplete()
       const initialTime = now()
@@ -280,6 +295,18 @@ function createSynthVoice (context) {
       cancelables.push(onComplete
         ? scheduleAt(onComplete, totalEnvelopeTime)
         : () => {}
+      )
+    },
+    vca2: (envelopeSegments) => {
+      const initialTime = now()
+      envelope2.holdAtCurrentValue()
+      envelopeSegments.reduce(
+        (totalTime, [target, time]) => {
+          const endTime = totalTime + time
+          envelope2.rampToValueAtTime(target, endTime)
+          return endTime
+        },
+        initialTime
       )
     }
   }
@@ -321,6 +348,15 @@ const operatorFactory = audioContext => {
     }
   }
 
+  function sum (...signals) {
+    const node = audioContext.createGain()
+    node.gain.setValueAtTime(1, 0)
+    signals.forEach(signal => signal.connect(node))
+    return {
+      connect: destination => node.connect(destination)
+    }
+  }
+
   /**
    * @returns {number} the current time in seconds
    */
@@ -348,5 +384,5 @@ const operatorFactory = audioContext => {
       source.stop()
     }
   }
-  return { oscillator, audioParam, multiply, now, scheduleAt }
+  return { oscillator, audioParam, multiply, now, scheduleAt, sum }
 }

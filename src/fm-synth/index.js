@@ -20,6 +20,7 @@ export const updateEnv2Release = level => updateParam('env2Release', level)
 export const updateEnv2Sustain = level => updateParam('env2Sustain', level)
 export const updateHarmonicityLevel = level => updateParam('harmonicityLevel', level)
 export const updateModLevel = level => updateParam('modLevel', level)
+export const updateModLevelEnv2Amount = level => updateParam('modLevelEnv2Amount', level)
 const updateParam = (param, level) => ({ type: 'FM_SYNTH_UPDATE_PARAM', param, level: parseFloat(level) })
 
 // ---------- SELECTOR ----------
@@ -36,6 +37,7 @@ export const env2Decay = state => currentPatch(state).env2Decay
 export const env2Release = state => currentPatch(state).env2Release
 export const env2Sustain = state => currentPatch(state).env2Sustain
 export const modLevel = state => currentPatch(state).modLevel
+export const modLevelEnv2Amount = state => currentPatch(state).modLevelEnv2Amount
 export const numberOfVoices = state => state.fmSynth.numberOfVoices
 export const harmonicityLevel = state => currentPatch(state).harmonicityLevel
 const patchManagement = state => state.patchManagement
@@ -83,6 +85,7 @@ const initialState = {
   patch: {
     harmonicityLevel: 0.2,
     modLevel: 0,
+    modLevelEnv2Amount: 0.5, // -1 => 1, default to 0
     env1Attack: 0, // ~ 5ms
     env1Decay: 0, // ~ 5ms
     env1Sustain: 1,

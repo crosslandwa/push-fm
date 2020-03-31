@@ -10,7 +10,8 @@ import {
   env2Release, updateEnv2Release,
   env2Sustain, updateEnv2Sustain,
   harmonicityLevel, updateHarmonicityLevel,
-  modLevel, updateModLevel
+  modLevel, updateModLevel,
+  modLevelEnv2Amount, updateModLevelEnv2Amount
 } from './index'
 
 const forEvent = action => event => action(event.target.value)
@@ -25,7 +26,8 @@ const mapStateToProps = state => ({
   env2Release: env2Release(state),
   env2Sustain: env2Sustain(state),
   harmonicityLevel: harmonicityLevel(state),
-  modLevel: modLevel(state)
+  modLevel: modLevel(state),
+  modLevelEnv2Amount: modLevelEnv2Amount(state)
 })
 
 const idFrom = label => label.toLowerCase().replace(/\s+/g, '-')
@@ -47,6 +49,7 @@ const FmSynth = ({
   env2Release,
   env2Sustain,
   modLevel,
+  modLevelEnv2Amount,
   updateEnv1Attack,
   updateEnv1Decay,
   updateEnv1Release,
@@ -56,11 +59,17 @@ const FmSynth = ({
   updateEnv2Release,
   updateEnv2Sustain,
   updateHarmonicityLevel,
-  updateModLevel
+  updateModLevel,
+  updateModLevelEnv2Amount
 }) => (
   <div class="fm-synth">
-    <Parameter label="Mod level" update={updateModLevel} value={modLevel} />
-    <Parameter label="Harmonicity ratio" update={updateHarmonicityLevel} value={harmonicityLevel} />
+    <div>
+      <Parameter label="Mod level" update={updateModLevel} value={modLevel} />
+      <Parameter label="Env 2 amount" update={updateModLevelEnv2Amount} value={modLevelEnv2Amount} />
+    </div>
+    <div>
+      <Parameter label="Harmonicity ratio" update={updateHarmonicityLevel} value={harmonicityLevel} />
+    </div>
     <div>
       <Parameter label="Env 1 attack" update={updateEnv1Attack} value={env1Attack} />
       <Parameter label="Env 1 decay" update={updateEnv1Decay} value={env1Decay} />
@@ -88,6 +97,7 @@ export default connect(
     updateEnv2Release: forEvent(updateEnv2Release),
     updateEnv2Sustain: forEvent(updateEnv2Sustain),
     updateHarmonicityLevel: forEvent(updateHarmonicityLevel),
-    updateModLevel: forEvent(updateModLevel)
+    updateModLevel: forEvent(updateModLevel),
+    updateModLevelEnv2Amount: forEvent(updateModLevelEnv2Amount)
   }
 )(FmSynth)

@@ -19,6 +19,7 @@ export const updateEnv2Decay = level => updateParam('env2Decay', level)
 export const updateEnv2Release = level => updateParam('env2Release', level)
 export const updateEnv2Sustain = level => updateParam('env2Sustain', level)
 export const updateHarmonicityLevel = level => updateParam('harmonicityLevel', level)
+export const updateHarmonicityLevelEnv2Amount = level => updateParam('harmonicityLevelEnv2Amount', level)
 export const updateModLevel = level => updateParam('modLevel', level)
 export const updateModLevelEnv2Amount = level => updateParam('modLevelEnv2Amount', level)
 const updateParam = (param, level) => ({ type: 'FM_SYNTH_UPDATE_PARAM', param, level: parseFloat(level) })
@@ -40,6 +41,7 @@ export const modLevel = state => currentPatch(state).modLevel
 export const modLevelEnv2Amount = state => currentPatch(state).modLevelEnv2Amount
 export const numberOfVoices = state => state.fmSynth.numberOfVoices
 export const harmonicityLevel = state => currentPatch(state).harmonicityLevel
+export const harmonicityLevelEnv2Amount = state => currentPatch(state).harmonicityLevelEnv2Amount
 const patchManagement = state => state.patchManagement
 const savedPatch = (state, number) => patchManagement(state).patches[number]
 const voiceForNoteNumber = (state, noteNumber) => {
@@ -84,6 +86,7 @@ const initialState = {
   numberOfVoices: 1,
   patch: {
     harmonicityLevel: 0.2,
+    harmonicityLevelEnv2Amount: 0.5, // -1 => 1, default to 0
     modLevel: 0,
     modLevelEnv2Amount: 0.5, // -1 => 1, default to 0
     env1Attack: 0, // ~ 5ms
@@ -210,6 +213,7 @@ export const createMiddleware = () => {
 const paramMapper = (name) => {
   return {
     harmonicityLevel: { mapping: state => harmonicityLevel(state) * 3.75 + 0.25, target: 'modulateHarmonicityRatio' },
+    harmonicityLevelEnv2Amount: { mapping: state => (harmonicityLevelEnv2Amount(state) * 2) - 1, target: 'modulateHarmonicityRatioEnv2Amount' },
     modLevel: { mapping: (state) => Math.pow(modLevel(state), 3) * 500, target: 'modulateModulationIndex' },
     modLevelEnv2Amount: { mapping: state => (modLevelEnv2Amount(state) * 2) - 1, target: 'modulateModulationIndexEnv2Amount' }
   }[name]
@@ -233,6 +237,7 @@ function createSynthVoice (context) {
     return {
       modulateCarrierFrequency: (target, time) => {},
       modulateHarmonicityRatio: (target, time) => {},
+      modulateHarmonicityRatioEnv2Amount: (target, time) => {},
       modulateModulationIndex: (target, time) => {},
       modulateModulationIndexEnv2Amount: (target, time) => {},
       vca: (envelopeSegments, onComplete) => {
@@ -252,12 +257,14 @@ function createSynthVoice (context) {
   const carrierAmplitude = audioParam(0)
   const carrierFrequency = audioParam(0)
   const harmonicityRatio = audioParam(1)
+  const harmonicityRatioEnv2Amount = audioParam(0)
   const modulationIndex = audioParam(0)
   const envelope2 = audioParam(0)
   const modulationIndexEnv2Amount = audioParam(0)
 
   const envelopedModulationIndex = multiply(modulationIndexEnv2Amount, multiply(envelope2, modulationIndex))
-  const carrierFrequencyTimesHarmonicityRatio = multiply(carrierFrequency, harmonicityRatio)
+  const envelopedHarmonicityRatio = multiply(harmonicityRatioEnv2Amount, multiply(envelope2, harmonicityRatio))
+  const carrierFrequencyTimesHarmonicityRatio = multiply(carrierFrequency, sum(harmonicityRatio, envelopedHarmonicityRatio))
   const modulatorOsc = multiply(
     oscillator([carrierFrequencyTimesHarmonicityRatio]),
     multiply(carrierFrequencyTimesHarmonicityRatio, sum(modulationIndex, envelopedModulationIndex))
@@ -278,6 +285,7 @@ function createSynthVoice (context) {
   return {
     modulateCarrierFrequency: modulate(carrierFrequency),
     modulateHarmonicityRatio: modulate(harmonicityRatio),
+    modulateHarmonicityRatioEnv2Amount: modulate(harmonicityRatioEnv2Amount),
     modulateModulationIndex: modulate(modulationIndex),
     modulateModulationIndexEnv2Amount: modulate(modulationIndexEnv2Amount),
     vca: (envelopeSegments, onComplete) => {

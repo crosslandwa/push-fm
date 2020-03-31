@@ -10,6 +10,7 @@ import {
   env2Release, updateEnv2Release,
   env2Sustain, updateEnv2Sustain,
   harmonicityLevel, updateHarmonicityLevel,
+  harmonicityLevelEnv2Amount, updateHarmonicityLevelEnv2Amount,
   modLevel, updateModLevel,
   modLevelEnv2Amount, updateModLevelEnv2Amount
 } from './index'
@@ -26,6 +27,7 @@ const mapStateToProps = state => ({
   env2Release: env2Release(state),
   env2Sustain: env2Sustain(state),
   harmonicityLevel: harmonicityLevel(state),
+  harmonicityLevelEnv2Amount: harmonicityLevelEnv2Amount(state),
   modLevel: modLevel(state),
   modLevelEnv2Amount: modLevelEnv2Amount(state)
 })
@@ -39,7 +41,6 @@ const Parameter = ({ label, id = idFrom(label), update, value }) => (
 )
 
 const FmSynth = ({
-  harmonicityLevel,
   env1Attack,
   env1Decay,
   env1Release,
@@ -48,6 +49,8 @@ const FmSynth = ({
   env2Decay,
   env2Release,
   env2Sustain,
+  harmonicityLevel,
+  harmonicityLevelEnv2Amount,
   modLevel,
   modLevelEnv2Amount,
   updateEnv1Attack,
@@ -59,6 +62,7 @@ const FmSynth = ({
   updateEnv2Release,
   updateEnv2Sustain,
   updateHarmonicityLevel,
+  updateHarmonicityLevelEnv2Amount,
   updateModLevel,
   updateModLevelEnv2Amount
 }) => (
@@ -69,6 +73,7 @@ const FmSynth = ({
     </div>
     <div>
       <Parameter label="Harmonicity ratio" update={updateHarmonicityLevel} value={harmonicityLevel} />
+      <Parameter label="Env 2 amount" update={updateHarmonicityLevelEnv2Amount} value={harmonicityLevelEnv2Amount} />
     </div>
     <div>
       <Parameter label="Env 1 attack" update={updateEnv1Attack} value={env1Attack} />
@@ -97,6 +102,7 @@ export default connect(
     updateEnv2Release: forEvent(updateEnv2Release),
     updateEnv2Sustain: forEvent(updateEnv2Sustain),
     updateHarmonicityLevel: forEvent(updateHarmonicityLevel),
+    updateHarmonicityLevelEnv2Amount: forEvent(updateHarmonicityLevelEnv2Amount),
     updateModLevel: forEvent(updateModLevel),
     updateModLevelEnv2Amount: forEvent(updateModLevelEnv2Amount)
   }

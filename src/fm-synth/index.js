@@ -153,7 +153,7 @@ export const createMiddleware = () => {
         synth = synth || createSynth(numberOfVoices(getState()))
         const { mapping, target } = paramMapper(action.param) || {}
         if (mapping) {
-          synth.forEach(voice => voice.modulate(target, mapping(getState()), 0.1))
+          synth.forEach(voice => voice[target](mapping(getState()), 0.1))
         }
         return
       case 'FM_SYNTH_PLAY_NOTE':
@@ -161,10 +161,10 @@ export const createMiddleware = () => {
         const voiceNumber = voiceToUseForNewNote(getState(), action.noteNumber)
         next(noteOff(voiceNumber))
         next(noteOn(action.noteNumber, action.velocity, voiceNumber))
-        synth[voiceNumber].modulate('carrierFrequency', midiNoteToF(action.noteNumber), 0);
+        synth[voiceNumber].modulateCarrierFrequency(midiNoteToF(action.noteNumber), 0);
         ['modLevel', 'harmonicityLevel'].forEach(param => {
           const { mapping, target } = paramMapper(param)
-          synth[voiceNumber].modulate(target, mapping(getState()), 0)
+          synth[voiceNumber][target](mapping(getState()), 0)
         })
         synth[voiceNumber].vca(
           [
@@ -201,8 +201,8 @@ export const createMiddleware = () => {
 
 const paramMapper = (name) => {
   return {
-    modLevel: { mapping: (state) => Math.pow(modLevel(state), 3) * 500, target: 'modulationIndex' },
-    harmonicityLevel: { mapping: state => harmonicityLevel(state) * 3.75 + 0.25, target: 'harmonicityRatio' }
+    modLevel: { mapping: (state) => Math.pow(modLevel(state), 3) * 500, target: 'modulateModulationIndex' },
+    harmonicityLevel: { mapping: state => harmonicityLevel(state) * 3.75 + 0.25, target: 'modulateHarmonicityRatio' }
   }[name]
 }
 
@@ -222,7 +222,9 @@ function createSynthVoice (context) {
 
   if (!context) {
     return {
-      modulate: (param, target, time) => {},
+      modulateCarrierFrequency: (target, time) => {},
+      modulateHarmonicityRatio: (target, time) => {},
+      modulateModulationIndex: (target, time) => {},
       vca: (envelopeSegments, onComplete) => {
         cancelOnVcaChangeComplete()
         const totalTime = envelopeSegments.reduce(
@@ -252,16 +254,17 @@ function createSynthVoice (context) {
 
   output.connect(context.destination)
 
-  const modulatables = { carrierFrequency, harmonicityRatio, modulationIndex }
+  const modulate = (param) => (target, time) => {
+    const initialTime = now()
+    const totalEnvelopeTime = initialTime + time
+    param.holdAtCurrentValue()
+    param.rampToValueAtTime(target, totalEnvelopeTime)
+  }
 
   return {
-    modulate: (param, target, time) => {
-      if (!modulatables[param]) return
-      const initialTime = now()
-      const totalEnvelopeTime = initialTime + time
-      modulatables[param].holdAtCurrentValue()
-      modulatables[param].rampToValueAtTime(target, totalEnvelopeTime)
-    },
+    modulateCarrierFrequency: modulate(carrierFrequency),
+    modulateHarmonicityRatio: modulate(harmonicityRatio),
+    modulateModulationIndex: modulate(modulationIndex),
     vca: (envelopeSegments, onComplete) => {
       cancelOnVcaChangeComplete()
       const initialTime = now()

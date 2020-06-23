@@ -151,7 +151,7 @@ export const createMiddleware = () => {
         dispatch(loadPatch(1))
         return
       case 'FM_SYNTH_UPDATE_PARAM':
-      case 'FM_SYNTH_CHANGE_PARAM_BY':
+      case 'FM_SYNTH_CHANGE_PARAM_BY': {
         next(action)
         synth = synth || createSynth(numberOfVoices(getState()))
         const { mapping, target } = paramMapper(action.param) || {}
@@ -159,7 +159,8 @@ export const createMiddleware = () => {
           synth.forEach(voice => voice[target](mapping(getState()), 0.1))
         }
         return
-      case 'FM_SYNTH_PLAY_NOTE':
+      }
+      case 'FM_SYNTH_PLAY_NOTE': {
         synth = synth || createSynth(numberOfVoices(getState()))
         const voiceNumber = voiceToUseForNewNote(getState(), action.noteNumber)
         next(noteOff(voiceNumber))
@@ -184,7 +185,8 @@ export const createMiddleware = () => {
           [env2Sustain(getState()), mapToEnvelopeSectionTime(env2Decay(getState()))]
         ])
         return
-      case 'FM_SYNTH_RELEASE_NOTE':
+      }
+      case 'FM_SYNTH_RELEASE_NOTE': {
         const voiceToTurnOff = voiceForNoteNumber(getState(), action.noteNumber)
         if (voiceToTurnOff >= 0) {
           synth[voiceToTurnOff].vca(
@@ -198,6 +200,7 @@ export const createMiddleware = () => {
           ])
         }
         return
+      }
       case 'FM_SYNTH_LOAD_PATCH':
         action.patch = savedPatch(getState(), action.patchNumber)
         return next(action)
@@ -378,10 +381,10 @@ const operatorFactory = audioContext => {
    * @returns {function} a function that when called will cancel the scheduled callback
    */
   function scheduleAt (callback, when) {
-    let source = audioContext.createBufferSource()
-    let numberOfSamplesInOneMs = audioContext.sampleRate / 1000
+    const source = audioContext.createBufferSource()
+    const numberOfSamplesInOneMs = audioContext.sampleRate / 1000
     // a buffer length of 1 sample doesn't work on IOS, so use 1/1000th of a second
-    let oneMsBuffer = audioContext.createBuffer(1, numberOfSamplesInOneMs, audioContext.sampleRate)
+    const oneMsBuffer = audioContext.createBuffer(1, numberOfSamplesInOneMs, audioContext.sampleRate)
     source.addEventListener('ended', callback)
     source.buffer = oneMsBuffer
     source.connect(audioContext.destination)

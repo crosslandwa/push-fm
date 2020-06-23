@@ -43,7 +43,7 @@ module.exports = {
       }
     }),
     postcss({
-      extensions: [ '.css' ]
+      extensions: ['.css']
     })
   ]
 }

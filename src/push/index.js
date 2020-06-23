@@ -80,23 +80,27 @@ export const middleware = ({ dispatch, getState }) => next => async action => {
           return push
         })
         .catch(err => { next(pushBindingError(err.message)); return pushWrapper.push() }) // Ports not found or Web MIDI API not supported)
-    case 'PUSH_CHANNEL_KNOB_TURNED':
+    case 'PUSH_CHANNEL_KNOB_TURNED': {
       const f = [changeModLevelBy, changeHarmonicityLevelBy][action.x]
       f && dispatch(f(action.delta * 0.01))
       return
-    case 'PUSH_PAD_PRESSED':
+    }
+    case 'PUSH_PAD_PRESSED': {
       const { autoRelease, x, y, velocity } = action
       dispatch((autoRelease ? playNoteAndRelease : playNote)(36 + xyToNumber(x, y), velocity))
       return
-    case 'PUSH_PAD_RELEASED':
+    }
+    case 'PUSH_PAD_RELEASED': {
       dispatch(releaseNote(36 + xyToNumber(action.x, action.y)))
       return
-    case 'PUSH_GRID_SELECT_PRESSED':
+    }
+    case 'PUSH_GRID_SELECT_PRESSED': {
       const currentlyLoadedPatchNumber = currentPatchNumber(getState())
       const invokedPatchNumber = action.x + 1
       return currentlyLoadedPatchNumber === invokedPatchNumber
         ? dispatch(savePatch(invokedPatchNumber))
         : dispatch(loadPatch(invokedPatchNumber))
+    }
   }
   return next(action)
 }

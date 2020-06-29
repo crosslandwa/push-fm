@@ -89,24 +89,21 @@ const FmSynth = ({
     <div>
       <span>Current patch</span>
       <select onChange={loadPatch} value={currentPatchNumber}>
-        {range(1, 8).map(x => (
-          <option value={x}>{x}</option>
-        ))}
+        {range(1, 8).map(x => <option value={x}>{x}</option>)}
       </select>
-      <button style={{ background: !currentPatchHasEdits ? 'red' : '' }} disabled={!currentPatchHasEdits} onClick={bringBackA} >A</button>
-      <button style={{ background: currentPatchHasEdits ? 'red' : '' }} disabled={!currentPatchHasModifiedVersion} onClick={bringBackB}>B</button>
-      <div>
-        <span>save</span>
-        {range(1, 8).map(x => (
-          <button
-            disabled={!currentPatchHasEdits}
-            onClick={() => savePatch(x)}
-            style={{ background: (x === currentPatchNumber) ? 'blue' : '' }}
-          >
-            {x}
-          </button>
-        ))}
-      </div>
+      <select
+        onChange={e => { e.target.value && savePatch(e) }}
+        value=""
+      >
+        <option>Save as patch number...</option>
+        {range(1, 8).map(x => <option value={x} >{x}</option>)}
+      </select>
+      {currentPatchHasEdits && (
+        <button onClick={bringBackA}>Revert modifications</button>
+      )}
+      {currentPatchHasModifiedVersion && (
+        <button onClick={bringBackB}>Re-apply modifications</button>
+      )}
     </div>
     <div>
       <Parameter label="Mod level" update={updateModLevel} value={modLevel} />
@@ -137,7 +134,7 @@ export default connect(
     bringBackA: bringBackA,
     bringBackB: bringBackB,
     loadPatch: forEventWithIntValue(loadPatch),
-    savePatch,
+    savePatch: forEventWithIntValue(savePatch),
     updateEnv1Attack: forEvent(updateEnv1Attack),
     updateEnv1Decay: forEvent(updateEnv1Decay),
     updateEnv1Release: forEvent(updateEnv1Release),

@@ -1,4 +1,6 @@
 // ---------- ACTIONS ----------
+export const bringBackA = () => ({ type: 'FM_SYNTH_BRING_BACK_A' })
+export const bringBackB = () => ({ type: 'FM_SYNTH_BRING_BACK_B' })
 const changeParamBy = (param, delta) => ({ type: 'FM_SYNTH_CHANGE_PARAM_BY', param, delta: parseFloat(delta) })
 export const changeHarmonicityLevelBy = delta => changeParamBy('harmonicityLevel', delta)
 export const changeModLevelBy = delta => changeParamBy('modLevel', delta)
@@ -29,6 +31,8 @@ const activeNotes = state => state.fmSynth.activeNotes
 export const currentActiveNoteNumbers = state => activeNotes(state).map(({ noteNumber }) => noteNumber)
 const currentPatch = state => state.fmSynth.patch
 export const currentPatchNumber = (state) => patchManagement(state).currentPatchNumber
+export const currentPatchHasEdits = (state) => state.fmSynth.patchHasEdits
+export const currentPatchHasModifiedVersion = (state) => !!state.fmSynth.modifiedPatch
 export const env1Attack = state => currentPatch(state).env1Attack
 export const env1Decay = state => currentPatch(state).env1Decay
 export const env1Release = state => currentPatch(state).env1Release
@@ -83,7 +87,9 @@ export const patchManagementReducer = (state = { currentPatchNumber: 1, patches:
 // ---------- REDUCER ----------
 const initialState = {
   activeNotes: [],
+  modifiedPatch: undefined,
   numberOfVoices: 1,
+  patchHasEdits: false,
   patch: {
     harmonicityLevel: 0.2,
     harmonicityLevelEnv2Amount: 0.5, // -1 => 1, default to 0
@@ -102,9 +108,24 @@ const initialState = {
 
 export const reducer = (state = initialState, action) => {
   switch (action.type) {
+    case 'FM_SYNTH_BRING_BACK_A':
+      return {
+        ...state,
+        patchHasEdits: false,
+        modifiedPatch: action.modifiedPatch,
+        patch: { ...initialState.patch, ...(action.patch || {}) }
+      }
+    case 'FM_SYNTH_BRING_BACK_B':
+      return {
+        ...state,
+        patchHasEdits: true,
+        modifiedPatch: undefined,
+        patch: { ...initialState.patch, ...(action.patch || {}) }
+      }
     case 'FM_SYNTH_CHANGE_PARAM_BY':
       return {
         ...state,
+        patchHasEdits: true,
         patch: { ...state.patch, [action.param]: Math.max(0, Math.min(1, action.delta + state.patch[[action.param]])) }
       }
     case 'FM_SYNTH_INITIALISE':
@@ -112,6 +133,7 @@ export const reducer = (state = initialState, action) => {
     case 'FM_SYNTH_LOAD_PATCH':
       return {
         ...state,
+        patchHasEdits: false,
         patch: { ...initialState.patch, ...(action.patch || {}) }
       }
     case 'FM_SYNTH_NOTE_OFF':
@@ -127,7 +149,14 @@ export const reducer = (state = initialState, action) => {
     case 'FM_SYNTH_UPDATE_PARAM':
       return {
         ...state,
+        patchHasEdits: true,
         patch: { ...state.patch, [action.param]: action.level }
+      }
+    case 'FM_SYNTH_SAVE_PATCH':
+      return {
+        ...state,
+        patchHasEdits: false,
+        modifiedPatch: undefined
       }
   }
   return state
@@ -146,6 +175,15 @@ export const createMiddleware = () => {
   let synth
   const middleware = ({ dispatch, getState }) => next => async (action) => {
     switch (action.type) {
+      case 'FM_SYNTH_BRING_BACK_A':
+        action.modifiedPatch = currentPatch(getState())
+        action.patch = savedPatch(getState(), currentPatchNumber(getState()))
+        next(action)
+        return
+      case 'FM_SYNTH_BRING_BACK_B':
+        action.patch = getState().fmSynth.modifiedPatch
+        next(action)
+        return
       case 'FM_SYNTH_INITIALISE':
         next(action)
         dispatch(loadPatch(1))

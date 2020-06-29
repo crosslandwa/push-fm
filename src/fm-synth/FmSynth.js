@@ -1,6 +1,11 @@
 import React from 'react'
 import { connect } from 'react-redux'
 import {
+  bringBackA,
+  bringBackB,
+  currentPatchHasEdits,
+  currentPatchHasModifiedVersion,
+  currentPatchNumber,
   env1Attack, updateEnv1Attack,
   env1Decay, updateEnv1Decay,
   env1Release, updateEnv1Release,
@@ -11,13 +16,20 @@ import {
   env2Sustain, updateEnv2Sustain,
   harmonicityLevel, updateHarmonicityLevel,
   harmonicityLevelEnv2Amount, updateHarmonicityLevelEnv2Amount,
+  loadPatch,
   modLevel, updateModLevel,
-  modLevelEnv2Amount, updateModLevelEnv2Amount
+  modLevelEnv2Amount, updateModLevelEnv2Amount,
+  savePatch
 } from './index'
+import range from '../range'
 
 const forEvent = action => event => action(event.target.value)
+const forEventWithIntValue = action => event => action(parseInt(event.target.value))
 
 const mapStateToProps = state => ({
+  currentPatchHasEdits: currentPatchHasEdits(state),
+  currentPatchHasModifiedVersion: currentPatchHasModifiedVersion(state),
+  currentPatchNumber: currentPatchNumber(state),
   env1Attack: env1Attack(state),
   env1Decay: env1Decay(state),
   env1Release: env1Release(state),
@@ -41,6 +53,11 @@ const Parameter = ({ label, id = idFrom(label), update, value }) => (
 )
 
 const FmSynth = ({
+  bringBackA,
+  bringBackB,
+  currentPatchHasEdits,
+  currentPatchHasModifiedVersion,
+  currentPatchNumber,
   env1Attack,
   env1Decay,
   env1Release,
@@ -51,8 +68,10 @@ const FmSynth = ({
   env2Sustain,
   harmonicityLevel,
   harmonicityLevelEnv2Amount,
+  loadPatch,
   modLevel,
   modLevelEnv2Amount,
+  savePatch,
   updateEnv1Attack,
   updateEnv1Decay,
   updateEnv1Release,
@@ -67,6 +86,28 @@ const FmSynth = ({
   updateModLevelEnv2Amount
 }) => (
   <div class="fm-synth">
+    <div>
+      <span>Current patch</span>
+      <select onChange={loadPatch} value={currentPatchNumber}>
+        {range(1, 8).map(x => (
+          <option value={x}>{x}</option>
+        ))}
+      </select>
+      <button style={{ background: !currentPatchHasEdits ? 'red' : '' }} disabled={!currentPatchHasEdits} onClick={bringBackA} >A</button>
+      <button style={{ background: currentPatchHasEdits ? 'red' : '' }} disabled={!currentPatchHasModifiedVersion} onClick={bringBackB}>B</button>
+      <div>
+        <span>save</span>
+        {range(1, 8).map(x => (
+          <button
+            disabled={!currentPatchHasEdits}
+            onClick={() => savePatch(x)}
+            style={{ background: (x === currentPatchNumber) ? 'blue' : '' }}
+          >
+            {x}
+          </button>
+        ))}
+      </div>
+    </div>
     <div>
       <Parameter label="Mod level" update={updateModLevel} value={modLevel} />
       <Parameter label="Env 2 amount" update={updateModLevelEnv2Amount} value={modLevelEnv2Amount} />
@@ -93,6 +134,10 @@ const FmSynth = ({
 export default connect(
   mapStateToProps,
   {
+    bringBackA: bringBackA,
+    bringBackB: bringBackB,
+    loadPatch: forEventWithIntValue(loadPatch),
+    savePatch,
     updateEnv1Attack: forEvent(updateEnv1Attack),
     updateEnv1Decay: forEvent(updateEnv1Decay),
     updateEnv1Release: forEvent(updateEnv1Release),

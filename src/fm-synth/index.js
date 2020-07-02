@@ -27,12 +27,12 @@ export const updateModLevelEnv2Amount = level => updateParam('modLevelEnv2Amount
 const updateParam = (param, level) => ({ type: 'FM_SYNTH_UPDATE_PARAM', param, level: parseFloat(level) })
 
 // ---------- SELECTOR ----------
-const activeNotes = state => state.fmSynth.activeNotes
+const activeNotes = state => fmSynth(state).activeNotes
 export const currentActiveNoteNumbers = state => activeNotes(state).map(({ noteNumber }) => noteNumber)
-const currentPatch = state => state.fmSynth.patch
+const currentPatch = state => fmSynth(state).patch
 export const currentPatchNumber = (state) => patchManagement(state).currentPatchNumber
-export const currentPatchHasModifiedVersion = (state) => !!state.fmSynth.modifiedPatch
-export const currentPatchIsModified = (state) => state.fmSynth.patchHasEdits
+export const currentPatchHasModifiedVersion = (state) => !!modifiedPatch(state)
+export const currentPatchIsModified = (state) => fmSynth(state).patchHasEdits
 export const env1Attack = state => currentPatch(state).env1Attack
 export const env1Decay = state => currentPatch(state).env1Decay
 export const env1Release = state => currentPatch(state).env1Release
@@ -41,9 +41,11 @@ export const env2Attack = state => currentPatch(state).env2Attack
 export const env2Decay = state => currentPatch(state).env2Decay
 export const env2Release = state => currentPatch(state).env2Release
 export const env2Sustain = state => currentPatch(state).env2Sustain
+const fmSynth = state => state.fmSynth
+const modifiedPatch = state => fmSynth(state).modifiedPatch
 export const modLevel = state => currentPatch(state).modLevel
 export const modLevelEnv2Amount = state => currentPatch(state).modLevelEnv2Amount
-export const numberOfVoices = state => state.fmSynth.numberOfVoices
+export const numberOfVoices = state => fmSynth(state).numberOfVoices
 export const harmonicityLevel = state => currentPatch(state).harmonicityLevel
 export const harmonicityLevelEnv2Amount = state => currentPatch(state).harmonicityLevelEnv2Amount
 const patchManagement = state => state.patchManagement
@@ -240,7 +242,7 @@ export const createMiddleware = () => {
         next(action)
         return
       case 'FM_SYNTH_REAPPLY_PATCH_MODIFICATIONS':
-        action.patch = getState().fmSynth.modifiedPatch
+        action.patch = modifiedPatch(getState())
         next(action)
         return
       case 'FM_SYNTH_SAVE_PATCH':

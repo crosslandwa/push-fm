@@ -1,10 +1,8 @@
 import React from 'react'
 import { connect } from 'react-redux'
 import {
-  bringBackA,
-  bringBackB,
-  currentPatchHasEdits,
   currentPatchHasModifiedVersion,
+  currentPatchIsModified,
   currentPatchNumber,
   env1Attack, updateEnv1Attack,
   env1Decay, updateEnv1Decay,
@@ -19,16 +17,18 @@ import {
   loadPatch,
   modLevel, updateModLevel,
   modLevelEnv2Amount, updateModLevelEnv2Amount,
+  reapplyPatchModifications,
+  revertPatchModifications,
   savePatch
 } from './index'
 import range from '../range'
 
 const forEvent = action => event => action(event.target.value)
-const forEventWithIntValue = action => event => action(parseInt(event.target.value))
+const forEventWithIntValue = action => event => event.target.value && action(parseInt(event.target.value))
 
 const mapStateToProps = state => ({
-  currentPatchHasEdits: currentPatchHasEdits(state),
   currentPatchHasModifiedVersion: currentPatchHasModifiedVersion(state),
+  currentPatchIsModified: currentPatchIsModified(state),
   currentPatchNumber: currentPatchNumber(state),
   env1Attack: env1Attack(state),
   env1Decay: env1Decay(state),
@@ -53,10 +53,8 @@ const Parameter = ({ label, id = idFrom(label), update, value }) => (
 )
 
 const FmSynth = ({
-  bringBackA,
-  bringBackB,
-  currentPatchHasEdits,
   currentPatchHasModifiedVersion,
+  currentPatchIsModified,
   currentPatchNumber,
   env1Attack,
   env1Decay,
@@ -71,6 +69,8 @@ const FmSynth = ({
   loadPatch,
   modLevel,
   modLevelEnv2Amount,
+  reapplyPatchModifications,
+  revertPatchModifications,
   savePatch,
   updateEnv1Attack,
   updateEnv1Decay,
@@ -87,22 +87,19 @@ const FmSynth = ({
 }) => (
   <div class="fm-synth">
     <div>
-      <span>Current patch</span>
+      <span>Current patch:</span>
       <select onChange={loadPatch} value={currentPatchNumber}>
         {range(1, 8).map(x => <option value={x}>{x}</option>)}
       </select>
-      <select
-        onChange={e => { e.target.value && savePatch(e) }}
-        value=""
-      >
+      <select onChange={savePatch} value="" >
         <option>Save as patch number...</option>
         {range(1, 8).map(x => <option value={x} >{x}</option>)}
       </select>
-      {currentPatchHasEdits && (
-        <button onClick={bringBackA}>Revert modifications</button>
+      {currentPatchIsModified && (
+        <button onClick={revertPatchModifications}>Revert modifications</button>
       )}
       {currentPatchHasModifiedVersion && (
-        <button onClick={bringBackB}>Re-apply modifications</button>
+        <button onClick={reapplyPatchModifications}>Re-apply modifications</button>
       )}
     </div>
     <div>
@@ -131,9 +128,9 @@ const FmSynth = ({
 export default connect(
   mapStateToProps,
   {
-    bringBackA: bringBackA,
-    bringBackB: bringBackB,
     loadPatch: forEventWithIntValue(loadPatch),
+    reapplyPatchModifications: reapplyPatchModifications,
+    revertPatchModifications: revertPatchModifications,
     savePatch: forEventWithIntValue(savePatch),
     updateEnv1Attack: forEvent(updateEnv1Attack),
     updateEnv1Decay: forEvent(updateEnv1Decay),

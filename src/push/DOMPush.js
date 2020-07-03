@@ -1,9 +1,17 @@
 import React from 'react'
 import { connect } from 'react-redux'
-import { activeGridSelect, activePads, gridPadPressed, gridSelectPressed } from './'
+import {
+  activeChannelSelect,
+  activeGridSelect,
+  activePads,
+  channelSelectPressed,
+  gridPadPressed,
+  gridSelectPressed
+} from './'
 import range from '../range'
 
 const mapStateToProps = state => ({
+  activeChannelSelect: activeChannelSelect(state),
   activeGridSelect: activeGridSelect(state),
   activePads: activePads(state)
 })
@@ -28,8 +36,11 @@ const GridSelectButton = ({ onClick, rgb = [255, 255, 255], x }) => (
   />
 )
 
-const DOMPush = ({ activeGridSelect, activePads, gridPadPressed, gridSelectPressed }) => (
+const DOMPush = ({ activeChannelSelect, activeGridSelect, activePads, channelSelectPressed, gridPadPressed, gridSelectPressed }) => (
   <div class="push-body">
+    <div class="push-grid-select">
+      {range(0, 7).map(x => <GridSelectButton x={x} onClick={channelSelectPressed} rgb={activeChannelSelect[x]} />)}
+    </div>
     <div class="push-grid-select">
       {range(0, 7).map(x => <GridSelectButton x={x} onClick={gridSelectPressed} rgb={activeGridSelect[x]} />)}
     </div>
@@ -41,4 +52,4 @@ const DOMPush = ({ activeGridSelect, activePads, gridPadPressed, gridSelectPress
   </div>
 )
 
-export default connect(mapStateToProps, { gridPadPressed, gridSelectPressed })(DOMPush)
+export default connect(mapStateToProps, { channelSelectPressed, gridPadPressed, gridSelectPressed })(DOMPush)

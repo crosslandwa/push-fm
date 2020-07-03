@@ -4,16 +4,25 @@ import {
   changeHarmonicityLevelBy,
   changeModLevelBy,
   currentActiveNoteNumbers,
+  currentPatchHasModifiedVersion,
+  currentPatchIsModified,
   currentPatchNumber,
   loadPatch,
   playNote,
   playNoteAndRelease,
-  releaseNote
+  releaseNote,
+  togglePatchAB
 } from '../fm-synth'
 
 const YELLOW = [220, 230, 20]
+const ORANGE = [230, 130, 20]
 
 // ---------- SELECTOR ----------
+export const activeChannelSelect = state => ({
+  6: currentPatchIsModified(state)
+    ? ORANGE
+    : currentPatchHasModifiedVersion(state) ? YELLOW : undefined
+})
 export const activeGridSelect = state => ({ [currentPatchNumber(state) - 1]: YELLOW })
 export const activePads = state => currentActiveNoteNumbers(state)
   .map(x => x - 36)
@@ -24,6 +33,7 @@ export const activePads = state => currentActiveNoteNumbers(state)
   )
 
 // ---------- ACTION ----------
+export const channelSelectPressed = (x) => ({ type: 'PUSH_CHANNEL_SELECT_PRESSED', x })
 export const initialisePush = () => ({ type: 'PUSH_INITIALISE' })
 export const gridChannelKnobTurned = (x, delta) => ({ type: 'PUSH_CHANNEL_KNOB_TURNED', x, delta })
 export const gridPadPressed = (x, y, velocity, autoRelease = true) => ({ type: 'PUSH_PAD_PRESSED', x, y, velocity, autoRelease })
@@ -64,6 +74,9 @@ export const middleware = ({ dispatch, getState }) => next => async action => {
         )
         .then(resetAllHardwareUI)
         .then(push => {
+          push.channelSelectButtons().forEach((channelSelectButton, index) => {
+            channelSelectButton.onPressed(() => dispatch(channelSelectPressed(index)))
+          })
           push.gridSelectButtons().forEach((gridSelectButton, index) => {
             gridSelectButton.onPressed(() => dispatch(gridSelectPressed(index)))
           })
@@ -82,6 +95,12 @@ export const middleware = ({ dispatch, getState }) => next => async action => {
     case 'PUSH_CHANNEL_KNOB_TURNED': {
       const f = [changeModLevelBy, changeHarmonicityLevelBy][action.x]
       f && dispatch(f(action.delta * 0.01))
+      return
+    }
+    case 'PUSH_CHANNEL_SELECT_PRESSED': {
+      if (action.x === 6) {
+        dispatch(togglePatchAB())
+      }
       return
     }
     case 'PUSH_PAD_PRESSED': {

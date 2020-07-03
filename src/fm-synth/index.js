@@ -8,8 +8,11 @@ const noteOff = voice => ({ type: 'FM_SYNTH_NOTE_OFF', voice })
 const noteOn = (noteNumber, velocity, voice) => ({ type: 'FM_SYNTH_NOTE_ON', noteNumber, velocity, voice })
 export const playNote = (noteNumber, velocity) => ({ type: 'FM_SYNTH_PLAY_NOTE', noteNumber, velocity, autoRelease: false })
 export const playNoteAndRelease = (noteNumber, velocity) => ({ type: 'FM_SYNTH_PLAY_NOTE', noteNumber, velocity, autoRelease: true })
+const reapplyPatchModifications = () => ({ type: 'FM_SYNTH_REAPPLY_PATCH_MODIFICATIONS' })
 export const releaseNote = noteNumber => ({ type: 'FM_SYNTH_RELEASE_NOTE', noteNumber })
+const revertPatchModifications = () => ({ type: 'FM_SYNTH_REVERT_PATCH_MODIFICATIONS' })
 export const savePatch = patchNumber => ({ type: 'FM_SYNTH_SAVE_PATCH', patchNumber })
+export const togglePatchAB = () => ({ type: 'FM_SYNTH_TOGGLE_A_B' })
 export const updateEnv1Attack = level => updateParam('env1Attack', level)
 export const updateEnv1Decay = level => updateParam('env1Decay', level)
 export const updateEnv1Release = level => updateParam('env1Release', level)
@@ -25,10 +28,12 @@ export const updateModLevelEnv2Amount = level => updateParam('modLevelEnv2Amount
 const updateParam = (param, level) => ({ type: 'FM_SYNTH_UPDATE_PARAM', param, level: parseFloat(level) })
 
 // ---------- SELECTOR ----------
-const activeNotes = state => state.fmSynth.activeNotes
+const activeNotes = state => fmSynth(state).activeNotes
 export const currentActiveNoteNumbers = state => activeNotes(state).map(({ noteNumber }) => noteNumber)
-const currentPatch = state => state.fmSynth.patch
+const currentPatch = state => fmSynth(state).patch
 export const currentPatchNumber = (state) => patchManagement(state).currentPatchNumber
+export const currentPatchHasModifiedVersion = (state) => !!modifiedPatch(state)
+export const currentPatchIsModified = (state) => fmSynth(state).patchHasEdits
 export const env1Attack = state => currentPatch(state).env1Attack
 export const env1Decay = state => currentPatch(state).env1Decay
 export const env1Release = state => currentPatch(state).env1Release
@@ -37,9 +42,11 @@ export const env2Attack = state => currentPatch(state).env2Attack
 export const env2Decay = state => currentPatch(state).env2Decay
 export const env2Release = state => currentPatch(state).env2Release
 export const env2Sustain = state => currentPatch(state).env2Sustain
+const fmSynth = state => state.fmSynth
+const modifiedPatch = state => fmSynth(state).modifiedPatch
 export const modLevel = state => currentPatch(state).modLevel
 export const modLevelEnv2Amount = state => currentPatch(state).modLevelEnv2Amount
-export const numberOfVoices = state => state.fmSynth.numberOfVoices
+export const numberOfVoices = state => fmSynth(state).numberOfVoices
 export const harmonicityLevel = state => currentPatch(state).harmonicityLevel
 export const harmonicityLevelEnv2Amount = state => currentPatch(state).harmonicityLevelEnv2Amount
 const patchManagement = state => state.patchManagement
@@ -83,7 +90,9 @@ export const patchManagementReducer = (state = { currentPatchNumber: 1, patches:
 // ---------- REDUCER ----------
 const initialState = {
   activeNotes: [],
+  modifiedPatch: undefined,
   numberOfVoices: 1,
+  patchHasEdits: false,
   patch: {
     harmonicityLevel: 0.2,
     harmonicityLevelEnv2Amount: 0.5, // -1 => 1, default to 0
@@ -105,15 +114,12 @@ export const reducer = (state = initialState, action) => {
     case 'FM_SYNTH_CHANGE_PARAM_BY':
       return {
         ...state,
+        patchHasEdits: true,
+        modifiedPatch: undefined,
         patch: { ...state.patch, [action.param]: Math.max(0, Math.min(1, action.delta + state.patch[[action.param]])) }
       }
     case 'FM_SYNTH_INITIALISE':
       return { ...state, numberOfVoices: action.numberOfVoices }
-    case 'FM_SYNTH_LOAD_PATCH':
-      return {
-        ...state,
-        patch: { ...initialState.patch, ...(action.patch || {}) }
-      }
     case 'FM_SYNTH_NOTE_OFF':
       return {
         ...state,
@@ -127,7 +133,36 @@ export const reducer = (state = initialState, action) => {
     case 'FM_SYNTH_UPDATE_PARAM':
       return {
         ...state,
+        patchHasEdits: true,
+        modifiedPatch: undefined,
         patch: { ...state.patch, [action.param]: action.level }
+      }
+    case 'FM_SYNTH_LOAD_PATCH':
+      return {
+        ...state,
+        patchHasEdits: false,
+        modifiedPatch: undefined,
+        patch: { ...initialState.patch, ...(action.patch || {}) }
+      }
+    case 'FM_SYNTH_REVERT_PATCH_MODIFICATIONS':
+      return {
+        ...state,
+        patchHasEdits: false,
+        modifiedPatch: action.modifiedPatch,
+        patch: { ...initialState.patch, ...(action.patch || {}) }
+      }
+    case 'FM_SYNTH_REAPPLY_PATCH_MODIFICATIONS':
+      return {
+        ...state,
+        patchHasEdits: true,
+        modifiedPatch: undefined,
+        patch: { ...initialState.patch, ...(action.patch || {}) }
+      }
+    case 'FM_SYNTH_SAVE_PATCH':
+      return {
+        ...state,
+        patchHasEdits: false,
+        modifiedPatch: undefined
       }
   }
   return state
@@ -204,9 +239,26 @@ export const createMiddleware = () => {
       case 'FM_SYNTH_LOAD_PATCH':
         action.patch = savedPatch(getState(), action.patchNumber)
         return next(action)
+      case 'FM_SYNTH_REVERT_PATCH_MODIFICATIONS':
+        action.modifiedPatch = currentPatch(getState())
+        action.patch = savedPatch(getState(), currentPatchNumber(getState()))
+        next(action)
+        return
+      case 'FM_SYNTH_REAPPLY_PATCH_MODIFICATIONS':
+        action.patch = modifiedPatch(getState())
+        next(action)
+        return
       case 'FM_SYNTH_SAVE_PATCH':
         action.patch = currentPatch(getState())
         return next(action)
+      case 'FM_SYNTH_TOGGLE_A_B':
+        if (currentPatchIsModified(getState())) {
+          return dispatch(revertPatchModifications())
+        }
+        if (currentPatchHasModifiedVersion(getState())) {
+          return dispatch(reapplyPatchModifications())
+        }
+        return
     }
     return next(action)
   }

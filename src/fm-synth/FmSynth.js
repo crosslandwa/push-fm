@@ -1,6 +1,9 @@
 import React from 'react'
 import { connect } from 'react-redux'
 import {
+  currentPatchHasModifiedVersion,
+  currentPatchIsModified,
+  currentPatchNumber,
   env1Attack, updateEnv1Attack,
   env1Decay, updateEnv1Decay,
   env1Release, updateEnv1Release,
@@ -11,13 +14,21 @@ import {
   env2Sustain, updateEnv2Sustain,
   harmonicityLevel, updateHarmonicityLevel,
   harmonicityLevelEnv2Amount, updateHarmonicityLevelEnv2Amount,
+  loadPatch,
   modLevel, updateModLevel,
-  modLevelEnv2Amount, updateModLevelEnv2Amount
+  modLevelEnv2Amount, updateModLevelEnv2Amount,
+  savePatch,
+  togglePatchAB
 } from './index'
+import range from '../range'
 
 const forEvent = action => event => action(event.target.value)
+const forEventWithIntValue = action => event => event.target.value && action(parseInt(event.target.value))
 
 const mapStateToProps = state => ({
+  currentPatchHasModifiedVersion: currentPatchHasModifiedVersion(state),
+  currentPatchIsModified: currentPatchIsModified(state),
+  currentPatchNumber: currentPatchNumber(state),
   env1Attack: env1Attack(state),
   env1Decay: env1Decay(state),
   env1Release: env1Release(state),
@@ -34,13 +45,22 @@ const mapStateToProps = state => ({
 
 const idFrom = label => label.toLowerCase().replace(/\s+/g, '-')
 const Parameter = ({ label, id = idFrom(label), update, value }) => (
+  <SynthControl id={id} label={label}>
+    <input type="range" id={id} onChange={update} min="0" max="1.0" step="0.001" value={value} />
+  </SynthControl>
+)
+
+const SynthControl = ({ children, label, id = idFrom(label) }) => (
   <div class="synth-control">
     <label class="synth-control__label" for={id}>{label}</label>
-    <input type="range" id={id} onChange={update} min="0" max="1.0" step="0.001" value={value} />
+    {children}
   </div>
 )
 
 const FmSynth = ({
+  currentPatchHasModifiedVersion,
+  currentPatchIsModified,
+  currentPatchNumber,
   env1Attack,
   env1Decay,
   env1Release,
@@ -51,8 +71,11 @@ const FmSynth = ({
   env2Sustain,
   harmonicityLevel,
   harmonicityLevelEnv2Amount,
+  loadPatch,
   modLevel,
   modLevelEnv2Amount,
+  savePatch,
+  togglePatchAB,
   updateEnv1Attack,
   updateEnv1Decay,
   updateEnv1Release,
@@ -67,6 +90,31 @@ const FmSynth = ({
   updateModLevelEnv2Amount
 }) => (
   <div class="fm-synth">
+    <div>
+      <SynthControl id="load-patch" label="Current patch" >
+        <select id="load-patch" class="synth-control-select" onChange={loadPatch} value={currentPatchNumber}>
+          {range(1, 8).map(x => <option value={x}>{x}</option>)}
+        </select>
+      </SynthControl>
+      <SynthControl
+        id="toggle-a-b"
+        label={(
+          <>
+            {!currentPatchIsModified || currentPatchHasModifiedVersion ? <strong>A</strong> : 'A'}
+            &nbsp;|&nbsp;
+            {currentPatchIsModified ? <strong>B</strong> : currentPatchHasModifiedVersion ? 'B' : <em>B</em>}
+          </>
+        )}
+      >
+        <button id="toggle-a-b" class="synth-control-button" onClick={togglePatchAB} disabled={!currentPatchIsModified && !currentPatchHasModifiedVersion}>Toggle patch A | B</button>
+      </SynthControl>
+      <SynthControl id="save-patch" label="" >
+        <select id="save-patch" class="synth-control-select" onChange={savePatch} value="" >
+          <option>Save as patch number...</option>
+          {range(1, 8).map(x => <option value={x} >{x}</option>)}
+        </select>
+      </SynthControl>
+    </div>
     <div>
       <Parameter label="Mod level" update={updateModLevel} value={modLevel} />
       <Parameter label="Env 2 amount" update={updateModLevelEnv2Amount} value={modLevelEnv2Amount} />
@@ -93,6 +141,9 @@ const FmSynth = ({
 export default connect(
   mapStateToProps,
   {
+    loadPatch: forEventWithIntValue(loadPatch),
+    savePatch: forEventWithIntValue(savePatch),
+    togglePatchAB: togglePatchAB,
     updateEnv1Attack: forEvent(updateEnv1Attack),
     updateEnv1Decay: forEvent(updateEnv1Decay),
     updateEnv1Release: forEvent(updateEnv1Release),

@@ -8,8 +8,7 @@ import {
   loadPatch,
   playNote,
   playNoteAndRelease,
-  releaseNote,
-  savePatch
+  releaseNote
 } from '../fm-synth'
 
 const YELLOW = [220, 230, 20]
@@ -95,11 +94,8 @@ export const middleware = ({ dispatch, getState }) => next => async action => {
       return
     }
     case 'PUSH_GRID_SELECT_PRESSED': {
-      const currentlyLoadedPatchNumber = currentPatchNumber(getState())
       const invokedPatchNumber = action.x + 1
-      return currentlyLoadedPatchNumber === invokedPatchNumber
-        ? dispatch(savePatch(invokedPatchNumber))
-        : dispatch(loadPatch(invokedPatchNumber))
+      return dispatch(loadPatch(invokedPatchNumber))
     }
   }
   return next(action)

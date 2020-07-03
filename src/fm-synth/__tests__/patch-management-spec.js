@@ -120,6 +120,15 @@ describe('patch management', () => {
         expect(currentPatchHasModifiedVersion(getState())).toEqual(false)
       })
 
+      it('is not possible on modifying a patch then reverting to the "A" version, then modifying again', async () => {
+        const { dispatch, getState } = await createStore()
+        dispatch(updateModLevel(0.5))
+        dispatch(revertPatchModifications())
+        dispatch(updateModLevel(0.75))
+
+        expect(currentPatchHasModifiedVersion(getState())).toEqual(false)
+      })
+
       it('is not possible on modifying a patch then reverting to the "A" version, then saving the patch', async () => {
         const { dispatch, getState } = await createStore()
         dispatch(updateModLevel(0.5))

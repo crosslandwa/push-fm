@@ -114,6 +114,7 @@ export const reducer = (state = initialState, action) => {
       return {
         ...state,
         patchHasEdits: true,
+        modifiedPatch: undefined,
         patch: { ...state.patch, [action.param]: Math.max(0, Math.min(1, action.delta + state.patch[[action.param]])) }
       }
     case 'FM_SYNTH_INITIALISE':
@@ -132,6 +133,7 @@ export const reducer = (state = initialState, action) => {
       return {
         ...state,
         patchHasEdits: true,
+        modifiedPatch: undefined,
         patch: { ...state.patch, [action.param]: action.level }
       }
     case 'FM_SYNTH_LOAD_PATCH':

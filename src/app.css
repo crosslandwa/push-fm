@@ -14,8 +14,9 @@ h1 {
 }
 
 .push-body {
-  margin: auto;
   background: grey;
+  margin: auto;
+  padding: 1.5em 0;
 }
 
 .push-grid, .push-grid-select {

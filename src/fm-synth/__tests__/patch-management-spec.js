@@ -3,9 +3,8 @@ import {
   currentPatchIsModified,
   loadPatch,
   modLevel,
-  reapplyPatchModifications,
-  revertPatchModifications,
   savePatch,
+  togglePatchAB,
   updateModLevel
 } from '..'
 import createStore from '../../store'
@@ -47,95 +46,110 @@ describe('patch management', () => {
   })
 
   describe('A/B comparison', () => {
+    const assertIsAWithB = (state) => {
+      expect(currentPatchIsModified(state)).toEqual(false)
+      expect(currentPatchHasModifiedVersion(state)).toEqual(true)
+    }
+
+    const assertIsAWithoutB = (state) => {
+      expect(currentPatchIsModified(state)).toEqual(false)
+      expect(currentPatchHasModifiedVersion(state)).toEqual(false)
+    }
+
+    const assertIsB = (state) => {
+      expect(currentPatchIsModified(state)).toEqual(true)
+      expect(currentPatchHasModifiedVersion(state)).toEqual(false)
+    }
+
     describe('reverting to the unedited "A" version of a patch', () => {
       it('is not possible on loading patch', async () => {
         const { getState } = await createStore()
 
-        expect(currentPatchIsModified(getState())).toEqual(false)
+        assertIsAWithoutB(getState())
       })
 
       it('is possible after modifying a patch', async () => {
         const { dispatch, getState } = await createStore()
-        dispatch(updateModLevel(0.5))
+        dispatch(updateModLevel(0.5)) // B
 
-        expect(currentPatchIsModified(getState())).toEqual(true)
+        assertIsB(getState())
       })
 
       it('is not possible after modifying a patch then saving it', async () => {
         const { dispatch, getState } = await createStore()
-        dispatch(updateModLevel(0.5))
-        dispatch(savePatch(1))
+        dispatch(updateModLevel(0.5)) // B
+        dispatch(savePatch(1)) // A
 
-        expect(currentPatchIsModified(getState())).toEqual(false)
+        assertIsAWithoutB(getState())
       })
 
       it('is not possible after modifying a patch then loading a different one it', async () => {
         const { dispatch, getState } = await createStore()
-        dispatch(updateModLevel(0.5))
+        dispatch(updateModLevel(0.5)) // B
 
         // patch 1 not saved
-        dispatch(loadPatch(2))
+        dispatch(loadPatch(2)) // A
 
-        expect(currentPatchIsModified(getState())).toEqual(false)
+        assertIsAWithoutB(getState())
       })
     })
 
     describe('(re-)applying the edited "B" version of a patch', () => {
       it('is not possible on loading patch', async () => {
-        const { getState } = await createStore()
+        const { getState } = await createStore() // A (no B)
 
-        expect(currentPatchHasModifiedVersion(getState())).toEqual(false)
+        assertIsAWithoutB(getState())
       })
 
       it('is not possible on modifying a patch', async () => {
-        const { dispatch, getState } = await createStore()
-        dispatch(updateModLevel(0.5))
+        const { dispatch, getState } = await createStore() // A
+        dispatch(updateModLevel(0.5)) // B
 
-        expect(currentPatchHasModifiedVersion(getState())).toEqual(false)
+        assertIsB(getState())
       })
 
       it('is possible on modifying a patch then reverting to the "A" version', async () => {
         const { dispatch, getState } = await createStore()
-        dispatch(updateModLevel(0.5))
-        dispatch(revertPatchModifications())
+        dispatch(updateModLevel(0.5)) // B
+        dispatch(togglePatchAB()) // A (has B)
 
-        expect(currentPatchHasModifiedVersion(getState())).toEqual(true)
+        assertIsAWithB(getState())
       })
 
       it('is not possible on modifying a patch then reverting to the "A" version, then re-applying the "B" version', async () => {
         const { dispatch, getState } = await createStore()
-        dispatch(updateModLevel(0.5))
-        dispatch(revertPatchModifications())
-        dispatch(reapplyPatchModifications())
+        dispatch(updateModLevel(0.5)) // B
+        dispatch(togglePatchAB()) // A
+        dispatch(togglePatchAB()) // B
 
-        expect(currentPatchHasModifiedVersion(getState())).toEqual(false)
+        assertIsB(getState())
       })
 
       it('is not possible on modifying a patch then reverting to the "A" version, then loading another patch', async () => {
         const { dispatch, getState } = await createStore()
-        dispatch(updateModLevel(0.5))
-        dispatch(revertPatchModifications())
-        dispatch(loadPatch(2))
+        dispatch(updateModLevel(0.5)) // B
+        dispatch(togglePatchAB()) // A (has B)
+        dispatch(loadPatch(2)) // A (no B)
 
-        expect(currentPatchHasModifiedVersion(getState())).toEqual(false)
+        assertIsAWithoutB(getState())
       })
 
       it('is not possible on modifying a patch then reverting to the "A" version, then modifying again', async () => {
         const { dispatch, getState } = await createStore()
-        dispatch(updateModLevel(0.5))
-        dispatch(revertPatchModifications())
-        dispatch(updateModLevel(0.75))
+        dispatch(updateModLevel(0.5)) // B
+        dispatch(togglePatchAB()) // A
+        dispatch(updateModLevel(0.75)) // B
 
-        expect(currentPatchHasModifiedVersion(getState())).toEqual(false)
+        assertIsB(getState())
       })
 
       it('is not possible on modifying a patch then reverting to the "A" version, then saving the patch', async () => {
         const { dispatch, getState } = await createStore()
-        dispatch(updateModLevel(0.5))
-        dispatch(revertPatchModifications())
-        dispatch(savePatch(1))
+        dispatch(updateModLevel(0.5)) // B
+        dispatch(togglePatchAB()) // A (with B)
+        dispatch(savePatch(1)) // A (no B)
 
-        expect(currentPatchHasModifiedVersion(getState())).toEqual(false)
+        assertIsAWithoutB(getState())
       })
     })
   })

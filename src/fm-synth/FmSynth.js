@@ -17,9 +17,8 @@ import {
   loadPatch,
   modLevel, updateModLevel,
   modLevelEnv2Amount, updateModLevelEnv2Amount,
-  reapplyPatchModifications,
-  revertPatchModifications,
-  savePatch
+  savePatch,
+  togglePatchAB
 } from './index'
 import range from '../range'
 
@@ -69,9 +68,8 @@ const FmSynth = ({
   loadPatch,
   modLevel,
   modLevelEnv2Amount,
-  reapplyPatchModifications,
-  revertPatchModifications,
   savePatch,
+  togglePatchAB,
   updateEnv1Attack,
   updateEnv1Decay,
   updateEnv1Release,
@@ -95,12 +93,14 @@ const FmSynth = ({
         <option>Save as patch number...</option>
         {range(1, 8).map(x => <option value={x} >{x}</option>)}
       </select>
-      {currentPatchIsModified && (
-        <button onClick={revertPatchModifications}>Revert modifications</button>
-      )}
-      {currentPatchHasModifiedVersion && (
-        <button onClick={reapplyPatchModifications}>Re-apply modifications</button>
-      )}
+    </div>
+    <div>
+      <span>
+        {!currentPatchIsModified || currentPatchHasModifiedVersion ? <strong>A</strong> : 'A'}
+        &nbsp;|&nbsp;
+        {currentPatchIsModified ? <strong>B</strong> : currentPatchHasModifiedVersion ? 'B' : <em>B</em>}
+      </span>
+      <button onClick={togglePatchAB} disabled={!currentPatchIsModified && !currentPatchHasModifiedVersion}>Toggle patch A | B</button>
     </div>
     <div>
       <Parameter label="Mod level" update={updateModLevel} value={modLevel} />
@@ -129,9 +129,8 @@ export default connect(
   mapStateToProps,
   {
     loadPatch: forEventWithIntValue(loadPatch),
-    reapplyPatchModifications: reapplyPatchModifications,
-    revertPatchModifications: revertPatchModifications,
     savePatch: forEventWithIntValue(savePatch),
+    togglePatchAB: togglePatchAB,
     updateEnv1Attack: forEvent(updateEnv1Attack),
     updateEnv1Decay: forEvent(updateEnv1Decay),
     updateEnv1Release: forEvent(updateEnv1Release),

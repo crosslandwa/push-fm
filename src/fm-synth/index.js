@@ -8,10 +8,11 @@ const noteOff = voice => ({ type: 'FM_SYNTH_NOTE_OFF', voice })
 const noteOn = (noteNumber, velocity, voice) => ({ type: 'FM_SYNTH_NOTE_ON', noteNumber, velocity, voice })
 export const playNote = (noteNumber, velocity) => ({ type: 'FM_SYNTH_PLAY_NOTE', noteNumber, velocity, autoRelease: false })
 export const playNoteAndRelease = (noteNumber, velocity) => ({ type: 'FM_SYNTH_PLAY_NOTE', noteNumber, velocity, autoRelease: true })
-export const reapplyPatchModifications = () => ({ type: 'FM_SYNTH_REAPPLY_PATCH_MODIFICATIONS' })
+const reapplyPatchModifications = () => ({ type: 'FM_SYNTH_REAPPLY_PATCH_MODIFICATIONS' })
 export const releaseNote = noteNumber => ({ type: 'FM_SYNTH_RELEASE_NOTE', noteNumber })
-export const revertPatchModifications = () => ({ type: 'FM_SYNTH_REVERT_PATCH_MODIFICATIONS' })
+const revertPatchModifications = () => ({ type: 'FM_SYNTH_REVERT_PATCH_MODIFICATIONS' })
 export const savePatch = patchNumber => ({ type: 'FM_SYNTH_SAVE_PATCH', patchNumber })
+export const togglePatchAB = () => ({ type: 'FM_SYNTH_TOGGLE_A_B' })
 export const updateEnv1Attack = level => updateParam('env1Attack', level)
 export const updateEnv1Decay = level => updateParam('env1Decay', level)
 export const updateEnv1Release = level => updateParam('env1Release', level)
@@ -250,6 +251,14 @@ export const createMiddleware = () => {
       case 'FM_SYNTH_SAVE_PATCH':
         action.patch = currentPatch(getState())
         return next(action)
+      case 'FM_SYNTH_TOGGLE_A_B':
+        if (currentPatchIsModified(getState())) {
+          return dispatch(revertPatchModifications())
+        }
+        if (currentPatchHasModifiedVersion(getState())) {
+          return dispatch(reapplyPatchModifications())
+        }
+        return
     }
     return next(action)
   }

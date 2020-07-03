@@ -45,9 +45,15 @@ const mapStateToProps = state => ({
 
 const idFrom = label => label.toLowerCase().replace(/\s+/g, '-')
 const Parameter = ({ label, id = idFrom(label), update, value }) => (
+  <SynthControl id={id} label={label}>
+    <input type="range" id={id} onChange={update} min="0" max="1.0" step="0.001" value={value} />
+  </SynthControl>
+)
+
+const SynthControl = ({ children, label, id = idFrom(label) }) => (
   <div class="synth-control">
     <label class="synth-control__label" for={id}>{label}</label>
-    <input type="range" id={id} onChange={update} min="0" max="1.0" step="0.001" value={value} />
+    {children}
   </div>
 )
 
@@ -85,22 +91,29 @@ const FmSynth = ({
 }) => (
   <div class="fm-synth">
     <div>
-      <span>Current patch:</span>
-      <select onChange={loadPatch} value={currentPatchNumber}>
-        {range(1, 8).map(x => <option value={x}>{x}</option>)}
-      </select>
-      <select onChange={savePatch} value="" >
-        <option>Save as patch number...</option>
-        {range(1, 8).map(x => <option value={x} >{x}</option>)}
-      </select>
-    </div>
-    <div>
-      <span>
-        {!currentPatchIsModified || currentPatchHasModifiedVersion ? <strong>A</strong> : 'A'}
-        &nbsp;|&nbsp;
-        {currentPatchIsModified ? <strong>B</strong> : currentPatchHasModifiedVersion ? 'B' : <em>B</em>}
-      </span>
-      <button onClick={togglePatchAB} disabled={!currentPatchIsModified && !currentPatchHasModifiedVersion}>Toggle patch A | B</button>
+      <SynthControl id="load-patch" label="Current patch" >
+        <select id="load-patch" class="synth-control-select" onChange={loadPatch} value={currentPatchNumber}>
+          {range(1, 8).map(x => <option value={x}>{x}</option>)}
+        </select>
+      </SynthControl>
+      <SynthControl
+        id="toggle-a-b"
+        label={(
+          <>
+            {!currentPatchIsModified || currentPatchHasModifiedVersion ? <strong>A</strong> : 'A'}
+            &nbsp;|&nbsp;
+            {currentPatchIsModified ? <strong>B</strong> : currentPatchHasModifiedVersion ? 'B' : <em>B</em>}
+          </>
+        )}
+      >
+        <button id="toggle-a-b" class="synth-control-button" onClick={togglePatchAB} disabled={!currentPatchIsModified && !currentPatchHasModifiedVersion}>Toggle patch A | B</button>
+      </SynthControl>
+      <SynthControl id="save-patch" label="" >
+        <select id="save-patch" class="synth-control-select" onChange={savePatch} value="" >
+          <option>Save as patch number...</option>
+          {range(1, 8).map(x => <option value={x} >{x}</option>)}
+        </select>
+      </SynthControl>
     </div>
     <div>
       <Parameter label="Mod level" update={updateModLevel} value={modLevel} />

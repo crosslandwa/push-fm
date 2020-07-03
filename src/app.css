@@ -5,6 +5,14 @@
   max-width: 52.5rem;
 }
 
+h1 {
+  margin-bottom: 0;
+}
+
+.fm-synth {
+  margin-top: 0.5em;
+}
+
 .push-body {
   margin: auto;
   background: grey;
@@ -72,4 +80,12 @@
 
 .synth-control__label {
   display: block;
+}
+
+.synth-control-select, .synth-control-button {
+  cursor: pointer;
+  font-size: 0.9rem;
+  margin: 0.5em 0.5em 0.5em 0;
+  min-width: 10em;
+  padding: 0.25em;
 }
